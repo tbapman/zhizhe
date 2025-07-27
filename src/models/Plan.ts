@@ -31,6 +31,15 @@ const PlanSchema: Schema = new Schema(
       type: Date,
       required: true,
     },
+    subtasks: {
+      type: [
+        {
+          content: { type: String, required: true },
+          completed: { type: Boolean, default: false },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

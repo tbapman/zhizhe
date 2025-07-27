@@ -26,6 +26,11 @@ export interface Goal {
   updatedAt: Date;
 }
 
+export interface Subtask {
+  content: string;
+  completed: boolean;
+}
+
 export interface Plan {
   _id: string;
   userId: string;
@@ -34,6 +39,7 @@ export interface Plan {
   completed: boolean;
   completedAt?: Date;
   date: Date;
+  subtasks: Subtask[];
   createdAt: Date;
   updatedAt: Date;
 }

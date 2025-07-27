@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get('date');
-    const userId = request.headers.get('x-user-id');
+    const userId = request.headers.get('x-user-id') || 'mock-user-id';
     
     if (!userId) {
       return NextResponse.json({
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
     const body = await request.json();
-    const userId = request.headers.get('x-user-id');
+    const userId = request.headers.get('x-user-id') || body.userId;
     
     if (!userId) {
       return NextResponse.json({
@@ -82,10 +82,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
+    // Validate subtasks format
+    if (body.subtasks && !Array.isArray(body.subtasks)) {
+      return NextResponse.json({
+        success: false,
+        message: '子任务格式不正确',
+        errorCode: 'INVALID_SUBTASKS_FORMAT'
+      }, { status: 400 });
+    }
+    
+    
+    // Remove userId from body if it exists to prevent conflicts
+    const { userId: _userId, ...planData } = body;
     const plan = await Plan.create({
-      ...body,
+      ...planData,
       userId,
     });
+    
+    console.log('Created plan:', plan);
     
     return NextResponse.json({
       success: true,

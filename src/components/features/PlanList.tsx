@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Edit, Trash2, Calendar, Target } from 'lucide-react';
+import { Check, X, Edit, Trash2, Target, CheckSquare, Square } from 'lucide-react';
 import { usePlanStore } from '@/lib/stores/planStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -85,6 +85,36 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     await completePlan(id);
   };
 
+  const toggleSubtask = async (planId: string, subtaskIndex: number) => {
+    const plan = plans.find(p => p._id === planId);
+    if (!plan || !plan.subtasks) return;
+
+    const updatedSubtasks = [...plan.subtasks];
+    updatedSubtasks[subtaskIndex] = {
+      ...updatedSubtasks[subtaskIndex],
+      completed: !updatedSubtasks[subtaskIndex].completed
+    };
+
+    // 检查是否所有子任务都已完成
+    const allSubtasksCompleted = updatedSubtasks.every(subtask => subtask.completed);
+    
+    const updates: any = { subtasks: updatedSubtasks };
+    
+    // 如果所有子任务都完成且当前任务未完成，则自动标记为完成
+    if (allSubtasksCompleted && !plan.completed) {
+      updates.completed = true;
+      updates.completedAt = new Date();
+    }
+    
+    // 如果有子任务未完成且当前任务已完成，则自动标记为未完成
+    if (!allSubtasksCompleted && plan.completed) {
+      updates.completed = false;
+      updates.completedAt = null;
+    }
+
+    await updatePlan(planId, updates);
+  };
+
   const filteredPlans = selectedDate 
     ? plans.filter(plan => {
         const planDate = new Date(plan.date).toISOString().split('T')[0];
@@ -116,7 +146,11 @@ export default function PlanList({ selectedDate }: PlanListProps) {
       ) : filteredPlans.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <div className="w-12 h-12 mx-auto mb-4 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              </svg>
+            </div>
             <p className="text-gray-500 mb-4">
               {selectedDate ? '该日期暂无计划' : '今天还没有计划'}
             </p>
@@ -154,17 +188,40 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(plan.date).toLocaleDateString()}
-                          </span>
-                          {plan.completed && plan.completedAt && (
-                            <span>
-                              完成于 {new Date(plan.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
+                        {plan.subtasks && plan.subtasks.length > 0 && (
+                          <div className="mt-3 space-y-1">
+                            {plan.subtasks.map((subtask, subIndex) => (
+                              <div 
+                                key={subIndex} 
+                                className={`flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors ${
+                                  subtask.completed ? 'bg-green-50 border border-green-200' : ''
+                                }`}
+                                onClick={() => toggleSubtask(plan._id, subIndex)}
+                              >
+                                {subtask.completed ? (
+                                  <CheckSquare className="w-3 h-3 text-green-600" />
+                                ) : (
+                                  <Square className="w-3 h-3 text-gray-400" />
+                                )}
+                                <span className={subtask.completed ? 'line-through text-gray-500' : 'text-gray-600'}>
+                                  {subtask.content}
+                                </span>
+                              </div>
+                            ))}
+                            
+                            {plan.subtasks.every(subtask => subtask.completed) && !plan.completed && (
+                              <div className="text-xs text-green-600 font-medium mt-2">
+                                ✨ 所有子任务完成，任务将自动标记为完成
+                              </div>
+                            )}
+                            
+                            {plan.completed && plan.subtasks.some(subtask => !subtask.completed) && (
+                              <div className="text-xs text-orange-600 font-medium mt-2">
+                                ⚠️ 有子任务未完成，任务将自动取消完成状态
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-1 ml-4">

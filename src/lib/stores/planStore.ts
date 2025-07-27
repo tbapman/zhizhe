@@ -47,6 +47,7 @@ export const usePlanStore = create<PlanStore>((set) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...planData,
+          subtasks: planData.subtasks || [],
           userId: 'mock-user-id',
         }),
       });

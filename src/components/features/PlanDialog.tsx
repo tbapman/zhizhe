@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Calendar, Target } from 'lucide-react';
+import { X, Calendar, Target, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Plan, Goal } from '@/types';
+import { Plan, Goal, Subtask } from '@/types';
 
 interface PlanDialogProps {
   isOpen: boolean;
@@ -29,6 +29,8 @@ export default function PlanDialog({
   const [selectedGoal, setSelectedGoal] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [completed, setCompleted] = useState(false);
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [newSubtaskContent, setNewSubtaskContent] = useState('');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(false);
 
@@ -38,6 +40,7 @@ export default function PlanDialog({
       setSelectedGoal(plan.goalId || '');
       setSelectedDate(new Date(plan.date).toISOString().split('T')[0]);
       setCompleted(plan.completed);
+      setSubtasks(plan.subtasks || []);
     } else {
       resetForm();
     }
@@ -72,6 +75,31 @@ export default function PlanDialog({
     setSelectedGoal('');
     setSelectedDate(new Date().toISOString().split('T')[0]);
     setCompleted(false);
+    setSubtasks([]);
+    setNewSubtaskContent('');
+  };
+
+  const handleAddSubtask = () => {
+    if (newSubtaskContent.trim()) {
+      setSubtasks([...subtasks, { content: newSubtaskContent.trim(), completed: false }]);
+      setNewSubtaskContent('');
+    }
+  };
+
+  const handleToggleSubtask = (index: number) => {
+    const updatedSubtasks = [...subtasks];
+    updatedSubtasks[index].completed = !updatedSubtasks[index].completed;
+    setSubtasks(updatedSubtasks);
+  };
+
+  const handleRemoveSubtask = (index: number) => {
+    setSubtasks(subtasks.filter((_, i) => i !== index));
+  };
+
+  const handleSubtaskContentChange = (index: number, content: string) => {
+    const updatedSubtasks = [...subtasks];
+    updatedSubtasks[index].content = content;
+    setSubtasks(updatedSubtasks);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,6 +110,7 @@ export default function PlanDialog({
       goalId: selectedGoal && selectedGoal !== "none" ? selectedGoal : undefined,
       date: new Date(selectedDate),
       completed,
+      subtasks,
     };
 
     onSubmit(planData);
@@ -165,6 +194,66 @@ export default function PlanDialog({
                 className="pl-10"
                 required
               />
+            </div>
+          </div>
+
+          <div>
+            <Label>子任务</Label>
+            <div className="space-y-2">
+              {subtasks.map((subtask, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-6 w-6"
+                    onClick={() => handleToggleSubtask(index)}
+                  >
+                    {subtask.completed ? (
+                      <CheckSquare className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Square className="w-4 h-4 text-gray-400" />
+                    )}
+                  </Button>
+                  <Input
+                    value={subtask.content}
+                    onChange={(e) => handleSubtaskContentChange(index, e.target.value)}
+                    placeholder="子任务内容"
+                    className="flex-1 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-6 w-6 text-red-600 hover:text-red-700"
+                    onClick={() => handleRemoveSubtask(index)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newSubtaskContent}
+                  onChange={(e) => setNewSubtaskContent(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSubtask();
+                    }
+                  }}
+                  placeholder="添加子任务..."
+                  className="flex-1 text-sm"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtaskContent.trim()}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
