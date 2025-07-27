@@ -47,5 +47,6 @@ export function setTokenCookie(token: string) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: '/', // 确保cookie可在所有路径访问
   };
 }

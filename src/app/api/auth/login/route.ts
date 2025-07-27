@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
     // 设置cookie
     const cookie = setTokenCookie(token);
     
+    // 确保cookie在localhost上也能正确设置
+    const cookieHeader = `${cookie.name}=${cookie.value}; HttpOnly; Path=/; Max-Age=${cookie.maxAge}; SameSite=Lax${cookie.secure ? '; Secure' : ''}`;
+    
     return NextResponse.json({
       success: true,
       message: '登录成功',
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
       }
     }, {
       headers: {
-        'Set-Cookie': `${cookie.name}=${cookie.value}; HttpOnly${cookie.secure ? '; Secure' : ''}; SameSite=${cookie.sameSite}; Max-Age=${cookie.maxAge}; Path=/`,
+        'Set-Cookie': cookieHeader,
       },
     });
   } catch (error) {

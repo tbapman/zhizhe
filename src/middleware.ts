@@ -60,16 +60,21 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get("auth-token")?.value;
 
     if (!token) {
+      console.log('No token found for protected path:', request.nextUrl.pathname);
+      console.log('Available cookies:', request.cookies.getAll().map(cookie => cookie.name));
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
     try {
       const payload = verifyToken(token);
       if (!payload) {
+        console.log('Invalid token for protected path:', request.nextUrl.pathname);
         return NextResponse.redirect(new URL("/login", request.url));
       }
+      console.log('Token valid for path:', request.nextUrl.pathname, 'userId:', payload.userId);
       return NextResponse.next();
     } catch (error) {
+      console.log('Token verification failed:', error);
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
@@ -80,10 +85,15 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/api/:path*",
+    "/tree",
     "/tree/:path*",
+    "/goals",
     "/goals/:path*",
+    "/plans",
     "/plans/:path*",
+    "/groups",
     "/groups/:path*",
+    "/profile",
     "/profile/:path*",
   ],
 };
