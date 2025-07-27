@@ -1,52 +1,61 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Goal, GoalStage, GoalStatus } from '@/types';
 
-export interface IGoal extends Omit<Goal, '_id'>, Document {}
+export interface IGoal extends Document {
+  userId: string;
+  title: string;
+  stage: 'flower' | 'apple' | 'root';
+  status: 'active' | 'completed' | 'archived';
+  achievementValue: number;
+  position: {
+    x: number;
+    y: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-const GoalSchema: Schema = new Schema(
-  {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-    },
-    subtitle: {
-      type: String,
-      default: '',
-    },
-    startDate: {
-      type: Date,
-      required: true,
-    },
-    endDate: {
-      type: Date,
-      default: null,
-    },
-    status: {
-      type: String,
-      enum: ['active', 'completed', 'archived'] as GoalStatus[],
-      default: 'active',
-    },
-    stage: {
-      type: String,
-      enum: ['flower', 'apple', 'root'] as GoalStage[],
-      default: 'flower',
-    },
-    achievementValue: {
-      type: Number,
-      default: 0,
-    },
+const GoalSchema: Schema = new Schema({
+  userId: {
+    type: String,
+    required: true,
+    index: true
   },
-  {
-    timestamps: true,
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  stage: {
+    type: String,
+    enum: ['flower', 'apple', 'root'],
+    default: 'flower'
+  },
+  status: {
+    type: String,
+    enum: ['active', 'completed', 'archived'],
+    default: 'active'
+  },
+  achievementValue: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  position: {
+    x: {
+      type: Number,
+      default: 0
+    },
+    y: {
+      type: Number,
+      default: 0
+    }
   }
-);
+}, {
+  timestamps: true
+});
 
-GoalSchema.index({ userId: 1 });
-GoalSchema.index({ status: 1 });
+GoalSchema.index({ userId: 1, status: 1 });
+GoalSchema.index({ userId: 1, stage: 1 });
 
 export default mongoose.models.Goal || mongoose.model<IGoal>('Goal', GoalSchema);

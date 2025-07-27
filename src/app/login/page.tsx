@@ -24,8 +24,8 @@ export default function AuthPage() {
   const handleSuccess = () => {
     // 延迟重定向，确保cookie设置完成
     setTimeout(() => {
-      // router.replace('/tree');
-      router.replace('/plan');
+      router.replace('/tree');
+      // router.replace('/plan');
     }, 100);
   };
 

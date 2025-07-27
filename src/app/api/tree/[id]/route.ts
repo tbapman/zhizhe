@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongoose';
-import TreeNode from '@/models/Tree';
+import Goal from '@/models/Goal';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 
 // PUT /api/tree/[id] - 更新目标树节点
@@ -31,8 +31,8 @@ export async function PUT(
 
     const { title, stage, status, achievementValue, position } = await request.json();
 
-    const treeNode = await TreeNode.findOne({ _id: params.id, userId: decoded.userId });
-    if (!treeNode) {
+    const goal = await Goal.findOne({ _id: params.id, userId: decoded.userId });
+    if (!goal) {
       return NextResponse.json({
         success: false,
         message: '目标不存在',
@@ -56,7 +56,7 @@ export async function PUT(
           errorCode: 'TITLE_TOO_LONG'
         }, { status: 400 });
       }
-      treeNode.title = title.trim();
+      goal.title = title.trim();
     }
 
     if (stage !== undefined) {
@@ -67,7 +67,7 @@ export async function PUT(
           errorCode: 'INVALID_STAGE'
         }, { status: 400 });
       }
-      treeNode.stage = stage;
+      goal.stage = stage;
     }
 
     if (status !== undefined) {
@@ -78,7 +78,7 @@ export async function PUT(
           errorCode: 'INVALID_STATUS'
         }, { status: 400 });
       }
-      treeNode.status = status;
+      goal.status = status;
     }
 
     if (achievementValue !== undefined) {
@@ -89,19 +89,19 @@ export async function PUT(
           errorCode: 'INVALID_ACHIEVEMENT_VALUE'
         }, { status: 400 });
       }
-      treeNode.achievementValue = achievementValue;
+      goal.achievementValue = achievementValue;
     }
 
     if (position !== undefined) {
-      treeNode.position = position;
+      goal.position = position;
     }
 
-    await treeNode.save();
+    await goal.save();
 
     return NextResponse.json({
       success: true,
       message: '更新目标成功',
-      data: treeNode
+      data: goal
     });
   } catch (error) {
     console.error('Update tree node error:', error);
@@ -139,8 +139,8 @@ export async function DELETE(
       }, { status: 401 });
     }
 
-    const treeNode = await TreeNode.findOne({ _id: params.id, userId: decoded.userId });
-    if (!treeNode) {
+    const goal = await Goal.findOne({ _id: params.id, userId: decoded.userId });
+    if (!goal) {
       return NextResponse.json({
         success: false,
         message: '目标不存在',
@@ -149,8 +149,8 @@ export async function DELETE(
     }
 
     // 软删除 - 标记为archived
-    treeNode.status = 'archived';
-    await treeNode.save();
+    goal.status = 'archived';
+    await goal.save();
 
     return NextResponse.json({
       success: true,

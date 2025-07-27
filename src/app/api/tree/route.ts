@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongoose';
-import TreeNode from '@/models/Tree';
+import Goal from '@/models/Goal';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 
 // GET /api/tree - 获取用户的所有目标树节点
@@ -26,13 +26,13 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const treeNodes = await TreeNode.find({ userId: decoded.userId, status: { $ne: 'archived' } })
+    const goals = await Goal.find({ userId: decoded.userId, status: { $ne: 'archived' } })
       .sort({ createdAt: -1 });
 
     return NextResponse.json({
       success: true,
       message: '获取目标树成功',
-      data: treeNodes
+      data: goals
     });
   } catch (error) {
     console.error('Get tree nodes error:', error);
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const treeNode = await TreeNode.create({
+    const goal = await Goal.create({
       userId: decoded.userId,
       title: title.trim(),
       stage,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: '创建目标成功',
-      data: treeNode
+      data: goal
     }, { status: 201 });
   } catch (error) {
     console.error('Create tree node error:', error);
