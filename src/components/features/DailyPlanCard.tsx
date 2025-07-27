@@ -14,12 +14,6 @@ export default function DailyPlanCard() {
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // 模拟目标数据，实际应该从API获取
-  const mockGoals = [
-    { _id: '1', title: '游泳' },
-    { _id: '2', title: '编程学习' },
-    { _id: '3', title: '英语考试' },
-  ];
 
   return (
     <div className="space-y-4">
@@ -37,7 +31,6 @@ export default function DailyPlanCard() {
       />
 
       <PlanList
-        goals={mockGoals}
         selectedDate={selectedDate}
       />
 
@@ -52,7 +45,6 @@ export default function DailyPlanCard() {
           setIsDialogOpen(false);
         }}
         plan={null}
-        goals={mockGoals}
       />
     </div>
   );

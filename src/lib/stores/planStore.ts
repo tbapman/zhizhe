@@ -28,8 +28,12 @@ export const usePlanStore = create<PlanStore>((set) => ({
       const response = await fetch(`/api/plans?${params}`);
       if (!response.ok) throw new Error('Failed to fetch plans');
       
-      const plans = await response.json();
-      set({ plans, loading: false });
+      const result = await response.json();
+      if (result.success) {
+        set({ plans: result.data, loading: false });
+      } else {
+        throw new Error(result.message || 'Failed to fetch plans');
+      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -49,11 +53,15 @@ export const usePlanStore = create<PlanStore>((set) => ({
       
       if (!response.ok) throw new Error('Failed to add plan');
       
-      const newPlan = await response.json();
-      set((state) => ({ 
-        plans: [newPlan, ...state.plans],
-        loading: false 
-      }));
+      const result = await response.json();
+      if (result.success) {
+        set((state) => ({ 
+          plans: [result.data, ...state.plans],
+          loading: false 
+        }));
+      } else {
+        throw new Error(result.message || 'Failed to add plan');
+      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -70,13 +78,17 @@ export const usePlanStore = create<PlanStore>((set) => ({
       
       if (!response.ok) throw new Error('Failed to update plan');
       
-      const updatedPlan = await response.json();
-      set((state) => ({
-        plans: state.plans.map((plan) =>
-          plan._id === id ? updatedPlan : plan
-        ),
-        loading: false,
-      }));
+      const result = await response.json();
+      if (result.success) {
+        set((state) => ({
+          plans: state.plans.map((plan) =>
+            plan._id === id ? result.data : plan
+          ),
+          loading: false,
+        }));
+      } else {
+        throw new Error(result.message || 'Failed to update plan');
+      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -91,10 +103,15 @@ export const usePlanStore = create<PlanStore>((set) => ({
       
       if (!response.ok) throw new Error('Failed to delete plan');
       
-      set((state) => ({
-        plans: state.plans.filter((plan) => plan._id !== id),
-        loading: false,
-      }));
+      const result = await response.json();
+      if (result.success) {
+        set((state) => ({
+          plans: state.plans.filter((plan) => plan._id !== id),
+          loading: false,
+        }));
+      } else {
+        throw new Error(result.message || 'Failed to delete plan');
+      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -109,13 +126,17 @@ export const usePlanStore = create<PlanStore>((set) => ({
       
       if (!response.ok) throw new Error('Failed to complete plan');
       
-      const { plan } = await response.json();
-      set((state) => ({
-        plans: state.plans.map((p) =>
-          p._id === id ? plan : p
-        ),
-        loading: false,
-      }));
+      const result = await response.json();
+      if (result.success) {
+        set((state) => ({
+          plans: state.plans.map((p) =>
+            p._id === id ? result.data.plan : p
+          ),
+          loading: false,
+        }));
+      } else {
+        throw new Error(result.message || 'Failed to complete plan');
+      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }

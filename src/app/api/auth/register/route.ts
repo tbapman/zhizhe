@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     });
     
     // 生成JWT
-    const token = generateToken({
+    const token = await generateToken({
       userId: user._id.toString(),
       email: user.email,
     });

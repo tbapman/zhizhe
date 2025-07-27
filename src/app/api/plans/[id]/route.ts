@@ -12,35 +12,43 @@ export async function GET(
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
-      return NextResponse.json(
-        { error: '用户未认证' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '用户未认证',
+        errorCode: 'UNAUTHORIZED'
+      }, { status: 401 });
     }
     
     if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
-      return NextResponse.json(
-        { error: 'Invalid plan ID format' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划ID格式无效',
+        errorCode: 'INVALID_PLAN_ID'
+      }, { status: 400 });
     }
     
     const plan = await Plan.findOne({ _id: id, userId }).populate('goalId', 'title');
     
     if (!plan) {
-      return NextResponse.json(
-        { error: 'Plan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划不存在',
+        errorCode: 'PLAN_NOT_FOUND'
+      }, { status: 404 });
     }
     
-    return NextResponse.json(plan);
+    return NextResponse.json({
+      success: true,
+      message: '获取计划成功',
+      data: plan
+    });
   } catch (error) {
     console.error('Error fetching plan:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch plan' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: '获取计划失败',
+      errorCode: 'INTERNAL_ERROR'
+    }, { status: 500 });
   }
 }
 
@@ -55,17 +63,19 @@ export async function PUT(
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
-      return NextResponse.json(
-        { error: '用户未认证' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '用户未认证',
+        errorCode: 'UNAUTHORIZED'
+      }, { status: 401 });
     }
     
     if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
-      return NextResponse.json(
-        { error: 'Invalid plan ID format' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划ID格式无效',
+        errorCode: 'INVALID_PLAN_ID'
+      }, { status: 400 });
     }
     
     const plan = await Plan.findOneAndUpdate(
@@ -75,19 +85,25 @@ export async function PUT(
     ).populate('goalId', 'title');
     
     if (!plan) {
-      return NextResponse.json(
-        { error: 'Plan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划不存在',
+        errorCode: 'PLAN_NOT_FOUND'
+      }, { status: 404 });
     }
     
-    return NextResponse.json(plan);
+    return NextResponse.json({
+      success: true,
+      message: '更新计划成功',
+      data: plan
+    });
   } catch (error) {
     console.error('Error updating plan:', error);
-    return NextResponse.json(
-      { error: 'Failed to update plan' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: '更新计划失败',
+      errorCode: 'INTERNAL_ERROR'
+    }, { status: 500 });
   }
 }
 
@@ -101,34 +117,42 @@ export async function DELETE(
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
-      return NextResponse.json(
-        { error: '用户未认证' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '用户未认证',
+        errorCode: 'UNAUTHORIZED'
+      }, { status: 401 });
     }
     
     if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
-      return NextResponse.json(
-        { error: 'Invalid plan ID format' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划ID格式无效',
+        errorCode: 'INVALID_PLAN_ID'
+      }, { status: 400 });
     }
     
     const plan = await Plan.findOneAndDelete({ _id: id, userId });
     
     if (!plan) {
-      return NextResponse.json(
-        { error: 'Plan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划不存在',
+        errorCode: 'PLAN_NOT_FOUND'
+      }, { status: 404 });
     }
     
-    return NextResponse.json({ message: 'Plan deleted successfully' });
+    return NextResponse.json({
+      success: true,
+      message: '删除计划成功',
+      data: { id }
+    });
   } catch (error) {
     console.error('Error deleting plan:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete plan' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: '删除计划失败',
+      errorCode: 'INTERNAL_ERROR'
+    }, { status: 500 });
   }
 }

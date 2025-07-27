@@ -24,10 +24,11 @@ export async function POST(
     ).populate('goalId');
 
     if (!plan) {
-      return NextResponse.json(
-        { error: 'Plan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '计划不存在',
+        errorCode: 'PLAN_NOT_FOUND'
+      }, { status: 404 });
     }
 
     // 创建成就记录
@@ -51,15 +52,19 @@ export async function POST(
     );
 
     return NextResponse.json({
-      plan,
-      achievement,
-      message: 'Plan completed successfully'
+      success: true,
+      message: '计划完成成功',
+      data: {
+        plan,
+        achievement
+      }
     });
   } catch (error) {
     console.error('Error completing plan:', error);
-    return NextResponse.json(
-      { error: 'Failed to complete plan' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: '完成计划失败',
+      errorCode: 'INTERNAL_ERROR'
+    }, { status: 500 });
   }
 }

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongoose';
 import Plan from '@/models/Plan';
-import mongoose from 'mongoose';
-
+import '@/models/Goal'; // Import to ensure Goal model is registered
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
@@ -12,13 +11,14 @@ export async function GET(request: NextRequest) {
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
-      return NextResponse.json(
-        { error: '用户未认证' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '用户未认证',
+        errorCode: 'UNAUTHORIZED'
+      }, { status: 401 });
     }
     
-    let query: any = { userId };
+    const query: Record<string, unknown> = { userId };
     
     if (date) {
       const targetDate = new Date(date);
@@ -36,13 +36,18 @@ export async function GET(request: NextRequest) {
       .populate('goalId', 'title')
       .sort({ createdAt: -1 });
     
-    return NextResponse.json(plans);
+    return NextResponse.json({
+      success: true,
+      message: '获取计划列表成功',
+      data: plans
+    });
   } catch (error) {
     console.error('Error fetching plans:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch plans' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: '获取计划列表失败',
+      errorCode: 'INTERNAL_ERROR'
+    }, { status: 500 });
   }
 }
 
@@ -53,10 +58,28 @@ export async function POST(request: NextRequest) {
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
-      return NextResponse.json(
-        { error: '用户未认证' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: '用户未认证',
+        errorCode: 'UNAUTHORIZED'
+      }, { status: 401 });
+    }
+
+    // Validate required fields
+    if (!body.content || body.content.trim() === '') {
+      return NextResponse.json({
+        success: false,
+        message: '计划内容不能为空',
+        errorCode: 'MISSING_CONTENT'
+      }, { status: 400 });
+    }
+
+    if (!body.date) {
+      return NextResponse.json({
+        success: false,
+        message: '计划日期不能为空',
+        errorCode: 'MISSING_DATE'
+      }, { status: 400 });
     }
     
     const plan = await Plan.create({
@@ -64,11 +87,17 @@ export async function POST(request: NextRequest) {
       userId,
     });
     
-    return NextResponse.json(plan, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      message: '创建计划成功',
+      data: plan
+    }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to create plan' },
-      { status: 500 }
-    );
+    console.error('Error creating plan:', error);
+    return NextResponse.json({
+      success: false,
+      message: '创建计划失败',
+      errorCode: 'INTERNAL_ERROR'
+    }, { status: 500 });
   }
 }

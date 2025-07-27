@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      const payload = verifyToken(token);
+      const payload = await verifyToken(token);
       if (!payload) {
         return NextResponse.json(
           { success: false, message: "无效的认证令牌" },
@@ -66,7 +66,7 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      const payload = verifyToken(token);
+      const payload = await verifyToken(token);
       if (!payload) {
         console.log('Invalid token for protected path:', request.nextUrl.pathname);
         return NextResponse.redirect(new URL("/login", request.url));

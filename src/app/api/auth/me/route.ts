@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
     
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     if (!decoded) {
       return NextResponse.json({
         success: false,

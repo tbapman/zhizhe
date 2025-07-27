@@ -10,27 +10,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Plan } from '@/types';
+import { Plan, Goal } from '@/types';
 
 interface PlanDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (plan: any) => void;
   plan?: Plan;
-  goals?: any[];
 }
 
 export default function PlanDialog({
   isOpen,
   onClose,
   onSubmit,
-  plan,
-  goals = []
+  plan
 }: PlanDialogProps) {
   const [content, setContent] = useState('');
   const [selectedGoal, setSelectedGoal] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [completed, setCompleted] = useState(false);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(false);
 
   useEffect(() => {
     if (plan) {
@@ -41,7 +41,31 @@ export default function PlanDialog({
     } else {
       resetForm();
     }
+    fetchGoals();
   }, [plan]);
+
+  const fetchGoals = async () => {
+    setGoalsLoading(true);
+    try {
+      const response = await fetch('/api/goals', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setGoals(data.data?.goals || []);
+      } else {
+        console.error('Failed to fetch goals');
+        setGoals([]);
+      }
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      setGoals([]);
+    } finally {
+      setGoalsLoading(false);
+    }
+  };
 
   const resetForm = () => {
     setContent('');
@@ -111,10 +135,15 @@ export default function PlanDialog({
             <Label htmlFor="goal">关联目标</Label>
             <Select value={selectedGoal || "none"} onValueChange={(value) => setSelectedGoal(value === "none" ? "" : value)}>
               <SelectTrigger>
-                <SelectValue placeholder="选择关联目标（可选）" />
+                <SelectValue placeholder={goalsLoading ? "加载中..." : "选择关联目标（可选）"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">无关联目标</SelectItem>
+                {goals.length === 0 && !goalsLoading && (
+                  <SelectItem value="no-goals" disabled>
+                    暂无目标
+                  </SelectItem>
+                )}
                 {goals.map((goal) => (
                   <SelectItem key={goal._id} value={goal._id}>
                     {goal.title}

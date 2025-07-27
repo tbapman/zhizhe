@@ -10,18 +10,48 @@ import { Badge } from '@/components/ui/badge';
 import PlanDialog from './PlanDialog';
 
 interface PlanListProps {
-  goals?: any[];
   selectedDate?: string;
 }
 
-export default function PlanList({ goals = [], selectedDate }: PlanListProps) {
+interface Goal {
+  _id: string;
+  title: string;
+}
+
+export default function PlanList({ selectedDate }: PlanListProps) {
   const { plans, loading, fetchPlans, updatePlan, deletePlan, completePlan } = usePlanStore();
   const [editingPlan, setEditingPlan] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(false);
 
   useEffect(() => {
     fetchPlans(selectedDate);
+    fetchGoals();
   }, [fetchPlans, selectedDate]);
+
+  const fetchGoals = async () => {
+    setGoalsLoading(true);
+    try {
+      const response = await fetch('/api/goals', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setGoals(data.data?.goals || []);
+      } else {
+        console.error('Failed to fetch goals');
+        setGoals([]);
+      }
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      setGoals([]);
+    } finally {
+      setGoalsLoading(false);
+    }
+  };
 
   const handleEdit = (plan: any) => {
     setEditingPlan(plan);
@@ -117,7 +147,9 @@ export default function PlanList({ goals = [], selectedDate }: PlanListProps) {
                           {plan.goalId && (
                             <Badge variant="outline" className="text-xs">
                               <Target className="w-3 h-3 mr-1" />
-                              {typeof plan.goalId === 'object' ? plan.goalId.title : '目标'}
+                              {typeof plan.goalId === 'object' ? plan.goalId.title : 
+                               typeof plan.goalId === 'string' ? plan.goalId : 
+                               '关联目标'}
                             </Badge>
                           )}
                         </div>
@@ -179,7 +211,6 @@ export default function PlanList({ goals = [], selectedDate }: PlanListProps) {
         onClose={() => setIsDialogOpen(false)}
         onSubmit={handleSubmit}
         plan={editingPlan}
-        goals={goals}
       />
     </div>
   );
