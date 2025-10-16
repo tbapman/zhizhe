@@ -44,7 +44,6 @@ export default function DailyPlanCard() {
           });
           setIsDialogOpen(false);
         }}
-        plan={null}
       />
     </div>
   );
