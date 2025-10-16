@@ -18,6 +18,7 @@ NGINX_CONF="/etc/nginx/conf.d/${APP_NAME}.conf"
 # --------------------------
 
 log() { echo -e "\033[1;32m[INFO]\033[0m $1"; }
+warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
 err() { echo -e "\033[1;31m[ERROR]\033[0m $1" && exit 1; }
 
 # --------------------------
@@ -29,17 +30,32 @@ prepare_env() {
   export NVM_DIR="$HOME/.nvm"
   [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
+  # 使用 .nvmrc 或 LTS 版本
   if [ -f "$APP_DIR/.nvmrc" ]; then
     nvm use || nvm install
   else
     nvm use --lts || nvm install --lts
   fi
 
+  # 检查或同步 pnpm 版本
   if ! command -v pnpm &>/dev/null; then
     log "安装 pnpm..."
     npm install -g pnpm
+  else
+    # 若项目中定义了 pnpm 版本，则同步
+    if [ -f "$APP_DIR/package.json" ]; then
+      PNPM_VER=$(grep -Po '"pnpm":\s*"\K[0-9.]+' "$APP_DIR/package.json" || true)
+      if [ -n "$PNPM_VER" ]; then
+        CURRENT_PNPM=$(pnpm --version || echo "0")
+        if [ "$CURRENT_PNPM" != "$PNPM_VER" ]; then
+          log "同步 pnpm 版本到 v$PNPM_VER..."
+          npm install -g "pnpm@$PNPM_VER"
+        fi
+      fi
+    fi
   fi
 
+  # 检查或安装 PM2
   if ! command -v pm2 &>/dev/null; then
     log "安装 PM2..."
     npm install -g pm2
@@ -76,7 +92,12 @@ update_code() {
 build_and_start() {
   cd "$APP_DIR"
   log "安装依赖..."
-  pnpm install --frozen-lockfile
+  pnpm install --frozen-lockfile || {
+    warn "检测到 lockfile 不兼容，尝试重新生成..."
+    rm -f pnpm-lock.yaml
+    pnpm install
+  }
+
   log "构建应用..."
   pnpm build
 
@@ -138,8 +159,8 @@ main() {
   fi
 
   log "开始部署 zhizhe 应用..."
-  prepare_env
   update_code "$commit"
+  prepare_env
   build_and_start
   setup_nginx
 
