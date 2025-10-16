@@ -98,13 +98,17 @@ export async function POST(request: NextRequest) {
       ...planData,
       userId,
     });
-    
-    console.log('Created plan:', plan);
-    
+
+    // Populate goalId to return consistent data format
+    const populatedPlan = await Plan.findById(plan._id)
+      .populate('goalId', 'title');
+
+    console.log('Created plan:', populatedPlan);
+
     return NextResponse.json({
       success: true,
       message: '创建计划成功',
-      data: plan
+      data: populatedPlan
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating plan:', error);

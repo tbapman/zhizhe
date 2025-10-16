@@ -34,7 +34,7 @@ export interface Subtask {
 export interface Plan {
   _id: string;
   userId: string;
-  goalId?: string;
+  goalId?: string | { _id: string; title: string };
   content: string;
   completed: boolean;
   completedAt?: Date;

@@ -1,0 +1,50 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    name: Deploy Frontend to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_PROD }}
+
+      - name: Run deploy script on PROD server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} <<EOF
+            set -e
+            bash /home/codespace/zhizhe/deploy-prod.sh
+          EOF
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    name: Deploy Frontend to Dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_DEV }}
+
+      - name: Run deploy script on DEV server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} <<EOF
+            set -e
+            bash /home/deploy/codespace/vcc-frontend/deploy-dev.sh
+          EOF
