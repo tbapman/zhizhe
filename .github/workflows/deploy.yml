@@ -23,8 +23,20 @@ jobs:
 
       - name: Run deploy script on PROD server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} <<EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} <<'EOF'
             set -e
+
+            echo "🔧 Loading nvm..."
+            export NVM_DIR="\$HOME/.nvm"
+            [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+
+            echo "🟢 Checking pnpm..."
+            if ! command -v pnpm &>/dev/null; then
+              echo "⚙️  pnpm not found, installing..."
+              npm install -g pnpm
+            fi
+
+            echo "🚀 Running deploy script..."
             bash /home/codespace/zhizhe/deploy-prod.sh
           EOF
 
@@ -44,7 +56,19 @@ jobs:
 
       - name: Run deploy script on DEV server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} <<EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} <<'EOF'
             set -e
+
+            echo "🔧 Loading nvm..."
+            export NVM_DIR="\$HOME/.nvm"
+            [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+
+            echo "🟢 Checking pnpm..."
+            if ! command -v pnpm &>/dev/null; then
+              echo "⚙️  pnpm not found, installing..."
+              npm install -g pnpm
+            fi
+
+            echo "🚀 Running deploy script..."
             bash /home/deploy/codespace/vcc-frontend/deploy-dev.sh
           EOF
