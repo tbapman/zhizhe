@@ -6,10 +6,12 @@ import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 // PUT /api/tree/[id] - 更新目标树节点
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    
+    const { id } = await params;
     
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -31,7 +33,7 @@ export async function PUT(
 
     const { title, stage, status, achievementValue, position } = await request.json();
 
-    const goal = await Goal.findOne({ _id: params.id, userId: decoded.userId });
+    const goal = await Goal.findOne({ _id: id, userId: decoded.userId });
     if (!goal) {
       return NextResponse.json({
         success: false,
@@ -116,10 +118,12 @@ export async function PUT(
 // DELETE /api/tree/[id] - 删除目标树节点（软删除）
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    
+    const { id } = await params;
     
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -139,7 +143,7 @@ export async function DELETE(
       }, { status: 401 });
     }
 
-    const goal = await Goal.findOne({ _id: params.id, userId: decoded.userId });
+    const goal = await Goal.findOne({ _id: id, userId: decoded.userId });
     if (!goal) {
       return NextResponse.json({
         success: false,
