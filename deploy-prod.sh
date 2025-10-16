@@ -4,13 +4,18 @@ set -e
 # --------------------------
 # 智者 (zhizhe) 部署脚本
 # --------------------------
+# 用法:
+#   ./deploy-prod.sh                    # 部署最新版本
+#   ./deploy-prod.sh --commit abc123    # 部署指定commit
+#   ./deploy-prod.sh --help             # 显示帮助信息
+# --------------------------
 
 APP_NAME="zhizhe"
 REPO="git@github.com:tbapman/zhizhe.git"
 APP_DIR="/home/codespace/$APP_NAME"
 DOMAIN="zhizhe.pulchic.com"
-SSL_CRT="/home/codespace/zhizhe/ssl/$DOMAIN.pem"
-SSL_KEY="/home/codespace/zhizhe/ssl/$DOMAIN.key"
+SSL_CRT="/Users/tbapman/zhizhe/ssl/$DOMAIN.pem"
+SSL_KEY="/Users/tbapman/zhizhe/ssl/$DOMAIN.key"
 BUILD_DIR="$APP_DIR/.next"
 NGINX_ROOT="/var/www/$APP_NAME"
 NEXT_PORT=3000
@@ -20,6 +25,42 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# 显示帮助信息
+show_help() {
+    echo -e "${GREEN}智者 (zhizhe) 部署脚本${NC}"
+    echo ""
+    echo -e "${YELLOW}用法:${NC}"
+    echo "  $0 [选项]"
+    echo ""
+    echo -e "${YELLOW}选项:${NC}"
+    echo "  --commit COMMIT_HASH    部署指定的commit版本"
+    echo "  --help                  显示帮助信息"
+    echo ""
+    echo -e "${YELLOW}示例:${NC}"
+    echo "  $0                      # 部署最新版本"
+    echo "  $0 --commit abc123      # 部署commit为abc123的版本"
+    echo "  $0 --help               # 显示此帮助信息"
+    echo ""
+    echo -e "${YELLOW}环境要求:${NC}"
+    echo "  - Node.js (支持nvm管理)"
+    echo "  - pnpm包管理器"
+    echo "  - PM2进程管理器"
+    echo "  - Nginx服务器"
+    echo "  - SSL证书文件"
+    echo ""
+    echo -e "${YELLOW}部署流程:${NC}"
+    echo "  1. 检查部署要求"
+    echo "  2. 备份当前版本"
+    echo "  3. 更新代码"
+    echo "  4. 安装依赖并构建"
+    echo "  5. 复制SSL证书"
+    echo "  6. 设置Next.js生产环境"
+    echo "  7. 生成Nginx配置"
+    echo "  8. 重载Nginx"
+    echo "  9. 健康检查"
+    echo "  10. 清理旧版本"
+}
 
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -90,10 +131,40 @@ update_code() {
         git clone "$REPO" "$APP_DIR"
         cd "$APP_DIR"
     fi
+
+    # 如果有指定commit hash，则checkout到指定版本
+    if [ -n "$commit_hash" ]; then
+        log_info "切换到指定commit: $commit_hash"
+        git checkout "$commit_hash" || {
+            log_error "无法切换到commit $commit_hash"
+            exit 1
+        }
+    fi
 }
 
 # 安装依赖并构建
 build_application() {
+    log_info "设置Node.js环境..."
+
+    # 加载 nvm 和 Node.js 环境
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+    # 使用项目指定的 Node.js 版本（如果有 .nvmrc）
+    if [ -f ".nvmrc" ]; then
+        log_info "使用.nvmrc指定的Node.js版本"
+        nvm use
+    else
+        log_info "使用LTS版本的Node.js"
+        nvm use --lts  # 或者指定具体版本，如：nvm use 18
+    fi
+
+    # 检查 pnpm 是否安装，如果没有则安装
+    if ! command -v pnpm &> /dev/null; then
+        log_warn "pnpm未安装，正在安装..."
+        npm install -g pnpm
+    fi
+
     log_info "安装依赖..."
     pnpm install --frozen-lockfile
 
@@ -322,6 +393,29 @@ cleanup_old_versions() {
 
 # 主部署流程
 main() {
+    # 解析命令行参数
+    commit_hash=""
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --commit)
+                commit_hash="$2"
+                shift 2
+                ;;
+            --help)
+                show_help
+                exit 0
+                ;;
+            *)
+                log_warn "未知参数: $1"
+                shift
+                ;;
+        esac
+    done
+
+    if [ -n "$commit_hash" ]; then
+        log_info "指定部署commit: $commit_hash"
+    fi
+
     log_info "开始部署智者应用..."
 
     check_requirements
