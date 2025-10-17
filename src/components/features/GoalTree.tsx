@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Plus, TreePine, Trash2, Edit3 } from 'lucide-react';
+import { useAuthStore } from '@/lib/stores/authStore';
 import AppleAnimation from './AppleAnimation';
 
 interface Goal {
@@ -21,6 +22,7 @@ interface Goal {
 }
 
 export default function GoalTree() {
+  const { user, loading: authLoading } = useAuthStore();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [fallingApples, setFallingApples] = useState<Set<string>>(new Set());
@@ -32,27 +34,41 @@ export default function GoalTree() {
   // 获取所有目标
   const fetchGoals = async () => {
     try {
+      console.log('GoalTree: Fetching goals from /api/tree');
       const response = await fetch('/api/tree', {
         method: 'GET',
         credentials: 'include',
       });
       
+      console.log('GoalTree: API response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('GoalTree: Successfully fetched goals:', data.data);
         setGoals(data.data);
       } else {
-        console.error('Failed to fetch goals');
+        console.error('GoalTree: Failed to fetch goals, status:', response.status);
+        if (response.status === 401) {
+          console.error('GoalTree: Unauthorized - token may be invalid or missing');
+        }
       }
     } catch (error) {
-      console.error('Error fetching goals:', error);
+      console.error('GoalTree: Error fetching goals:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchGoals();
-  }, []);
+    // 只有在用户认证完成且有用户信息时才获取目标
+    if (!authLoading && user) {
+      console.log('GoalTree: User authenticated, fetching goals');
+      fetchGoals();
+    } else if (!authLoading && !user) {
+      console.log('GoalTree: No user found after auth loading complete');
+      setLoading(false);
+    }
+  }, [authLoading, user]);
 
   // 创建新目标
   const createGoal = async (title: string) => {

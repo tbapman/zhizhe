@@ -13,6 +13,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     // 只在客户端执行一次认证检查
     if (typeof window !== 'undefined') {
+      console.log('AuthProvider: Initializing authentication check');
       checkAuth();
     }
   }, [checkAuth]);

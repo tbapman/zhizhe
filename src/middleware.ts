@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth/jwt";
 
 export async function middleware(request: NextRequest) {
+  console.log('Middleware: Processing request for path:', request.nextUrl.pathname);
+  
   // 检查是否是API路由
   if (request.nextUrl.pathname.startsWith("/api/")) {
     // 跳过认证路由

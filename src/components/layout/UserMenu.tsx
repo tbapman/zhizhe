@@ -15,14 +15,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function UserMenu() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, loading } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
   };
 
-  if (!user) return null;
+  console.log('UserMenu: user state:', user, 'loading:', loading);
+
+  if (loading) {
+    return <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />;
+  }
+
+  if (!user) {
+    console.log('UserMenu: No user found, returning null');
+    return null;
+  }
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

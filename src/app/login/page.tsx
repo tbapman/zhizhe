@@ -22,11 +22,18 @@ export default function AuthPage() {
   }, [checkAuth]);
 
   const handleSuccess = async () => {
+    console.log('Login page: Login successful, waiting for auth state update');
     // 延迟重定向，确保cookie设置完成并重新检查认证状态
     setTimeout(async () => {
+      console.log('Login page: Rechecking auth state before redirect');
       await checkAuth(); // 重新检查认证状态
-      router.replace('/tree');
-    }, 200);
+      
+      // 再等一点时间确保状态完全更新
+      setTimeout(() => {
+        console.log('Login page: Redirecting to /tree');
+        router.replace('/tree');
+      }, 100);
+    }, 300);
   };
 
   return (
