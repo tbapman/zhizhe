@@ -25,6 +25,8 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} <<EOF
             set -e
+            export MONGODB_URI="${{ secrets.MONGODB_URI }}"
+            export NODE_ENV="production"
             bash /home/codespace/zhizhe/deploy-prod.sh
           EOF
 
@@ -46,5 +48,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} <<EOF
             set -e
+            export MONGODB_URI="${{ secrets.MONGODB_URI }}"
+            export NODE_ENV="development"
             bash /home/deploy/codespace/vcc-frontend/deploy-dev.sh
           EOF
