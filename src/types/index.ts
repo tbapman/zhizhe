@@ -28,6 +28,7 @@ export interface Goal {
 
 export interface Subtask {
   content: string;
+  quantity: number;
   completed: boolean;
 }
 
@@ -36,6 +37,7 @@ export interface Plan {
   userId: string;
   goalId?: string | { _id: string; title: string };
   content: string;
+  quantity: number;
   completed: boolean;
   completedAt?: Date;
   date: Date;

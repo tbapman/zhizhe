@@ -26,6 +26,7 @@ export default function PlanDialog({
   plan
 }: PlanDialogProps) {
   const [content, setContent] = useState('');
+  const [quantity, setQuantity] = useState(0);
   const [selectedGoal, setSelectedGoal] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [completed, setCompleted] = useState(false);
@@ -37,6 +38,7 @@ export default function PlanDialog({
   useEffect(() => {
     if (plan) {
       setContent(plan.content);
+      setQuantity(plan.quantity || 0);
       // Handle goalId which can be string or object
       const goalId = typeof plan.goalId === 'object' && plan.goalId ? plan.goalId._id : plan.goalId || '';
       setSelectedGoal(goalId);
@@ -74,6 +76,7 @@ export default function PlanDialog({
 
   const resetForm = () => {
     setContent('');
+    setQuantity(0);
     setSelectedGoal('');
     setSelectedDate(new Date().toISOString().split('T')[0]);
     setCompleted(false);
@@ -83,7 +86,7 @@ export default function PlanDialog({
 
   const handleAddSubtask = () => {
     if (newSubtaskContent.trim()) {
-      setSubtasks([...subtasks, { content: newSubtaskContent.trim(), completed: false }]);
+      setSubtasks([...subtasks, { content: newSubtaskContent.trim(), quantity: 0, completed: false }]);
       setNewSubtaskContent('');
     }
   };
@@ -104,11 +107,18 @@ export default function PlanDialog({
     setSubtasks(updatedSubtasks);
   };
 
+  const handleSubtaskQuantityChange = (index: number, quantity: number) => {
+    const updatedSubtasks = [...subtasks];
+    updatedSubtasks[index].quantity = Math.max(0, quantity);
+    setSubtasks(updatedSubtasks);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const planData = {
       content,
+      quantity,
       goalId: selectedGoal && selectedGoal !== "none" ? selectedGoal : undefined,
       date: new Date(selectedDate),
       completed,
@@ -159,6 +169,18 @@ export default function PlanDialog({
               placeholder="请输入计划内容..."
               required
               rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="quantity">数量/频次/组数</Label>
+            <Input
+              id="quantity"
+              type="number"
+              min="0"
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+              placeholder="0"
             />
           </div>
 
@@ -222,6 +244,14 @@ export default function PlanDialog({
                     onChange={(e) => handleSubtaskContentChange(index, e.target.value)}
                     placeholder="子任务内容"
                     className="flex-1 text-sm"
+                  />
+                  <Input
+                    type="number"
+                    min="0"
+                    value={subtask.quantity}
+                    onChange={(e) => handleSubtaskQuantityChange(index, parseInt(e.target.value) || 0)}
+                    placeholder="数量"
+                    className="w-16 text-sm"
                   />
                   <Button
                     type="button"

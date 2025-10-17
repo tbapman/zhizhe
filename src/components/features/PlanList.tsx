@@ -2,11 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Edit, Trash2, Target, CheckSquare, Square } from 'lucide-react';
+import { Check, X, Edit, Trash2, Target, CheckSquare, Square, Plus, Minus, MoreVertical } from 'lucide-react';
 import { usePlanStore } from '@/lib/stores/planStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import PlanDialog from './PlanDialog';
 
 interface PlanListProps {
@@ -115,6 +121,27 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     await updatePlan(planId, updates);
   };
 
+  const updatePlanQuantity = async (planId: string, change: number) => {
+    const plan = plans.find(p => p._id === planId);
+    if (!plan) return;
+
+    const newQuantity = Math.max(0, (plan.quantity || 0) + change);
+    await updatePlan(planId, { quantity: newQuantity });
+  };
+
+  const updateSubtaskQuantity = async (planId: string, subtaskIndex: number, change: number) => {
+    const plan = plans.find(p => p._id === planId);
+    if (!plan || !plan.subtasks) return;
+
+    const updatedSubtasks = [...plan.subtasks];
+    updatedSubtasks[subtaskIndex] = {
+      ...updatedSubtasks[subtaskIndex],
+      quantity: Math.max(0, (updatedSubtasks[subtaskIndex].quantity || 0) + change)
+    };
+
+    await updatePlan(planId, { subtasks: updatedSubtasks });
+  };
+
   const filteredPlans = selectedDate 
     ? plans.filter(plan => {
         const planDate = new Date(plan.date).toISOString().split('T')[0];
@@ -124,6 +151,9 @@ export default function PlanList({ selectedDate }: PlanListProps) {
 
   const completedCount = filteredPlans.filter(p => p.completed).length;
   const totalCount = filteredPlans.length;
+
+  // 检查计划是否有子任务
+  const hasSubtasks = (plan: any) => plan.subtasks && plan.subtasks.length > 0;
 
   return (
     <div className="space-y-4">
@@ -172,14 +202,27 @@ export default function PlanList({ selectedDate }: PlanListProps) {
               >
                 <Card className={`${plan.completed ? 'bg-green-50 border-green-200' : ''}`}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-start gap-3">
+                      {/* 左侧完成状态按钮 */}
+                      {!plan.completed && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 w-8 p-0 mt-0.5"
+                          onClick={() => handleComplete(plan._id)}
+                        >
+                          <Check className="w-5 h-5" />
+                        </Button>
+                      )}
+                      
+                      {/* 主内容区 */}
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <p className={`font-medium ${plan.completed ? 'line-through text-gray-500' : ''}`}>
                             {plan.content}
                           </p>
                           {plan.goalId && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs shrink-0">
                               <Target className="w-3 h-3 mr-1" />
                               {typeof plan.goalId === 'object' ? plan.goalId.title : 
                                typeof plan.goalId === 'string' ? plan.goalId : 
@@ -188,72 +231,138 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                           )}
                         </div>
                         
-                        {plan.subtasks && plan.subtasks.length > 0 && (
-                          <div className="mt-3 space-y-1">
+                        {/* 主计划数量控制 - 仅在没有子任务时显示 */}
+                        {!hasSubtasks(plan) && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-gray-600">数量:</span>
+                            <div className="flex items-center gap-1 bg-gray-50 rounded-md px-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 hover:bg-gray-200"
+                                onClick={() => updatePlanQuantity(plan._id, -1)}
+                                disabled={plan.completed || (plan.quantity || 0) <= 0}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="min-w-[2.5rem] text-center text-sm font-medium px-2">
+                                {plan.quantity || 0}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 hover:bg-gray-200"
+                                onClick={() => updatePlanQuantity(plan._id, 1)}
+                                disabled={plan.completed}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 子任务列表 */}
+                        {hasSubtasks(plan) && (
+                          <div className="mt-3 space-y-1.5">
                             {plan.subtasks.map((subtask, subIndex) => (
                               <div 
                                 key={subIndex} 
-                                className={`flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors ${
-                                  subtask.completed ? 'bg-green-50 border border-green-200' : ''
+                                className={`flex items-center gap-2 text-sm p-2 rounded-md transition-colors ${
+                                  subtask.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
                                 }`}
-                                onClick={() => toggleSubtask(plan._id, subIndex)}
                               >
-                                {subtask.completed ? (
-                                  <CheckSquare className="w-3 h-3 text-green-600" />
-                                ) : (
-                                  <Square className="w-3 h-3 text-gray-400" />
-                                )}
-                                <span className={subtask.completed ? 'line-through text-gray-500' : 'text-gray-600'}>
-                                  {subtask.content}
-                                </span>
+                                <div 
+                                  className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
+                                  onClick={() => toggleSubtask(plan._id, subIndex)}
+                                >
+                                  {subtask.completed ? (
+                                    <CheckSquare className="w-4 h-4 text-green-600 shrink-0" />
+                                  ) : (
+                                    <Square className="w-4 h-4 text-gray-400 shrink-0" />
+                                  )}
+                                  <span className={`${subtask.completed ? 'line-through text-gray-500' : 'text-gray-600'} truncate`}>
+                                    {subtask.content}
+                                  </span>
+                                </div>
+                                
+                                {/* 子任务数量控制 */}
+                                <div className="flex items-center gap-1 bg-gray-50 rounded px-0.5 shrink-0">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 hover:bg-gray-200"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateSubtaskQuantity(plan._id, subIndex, -1);
+                                    }}
+                                    disabled={subtask.completed || (subtask.quantity || 0) <= 0}
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </Button>
+                                  <span className="min-w-[1.5rem] text-center text-xs font-medium">
+                                    {subtask.quantity || 0}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 hover:bg-gray-200"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateSubtaskQuantity(plan._id, subIndex, 1);
+                                    }}
+                                    disabled={subtask.completed}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             ))}
                             
                             {plan.subtasks.every(subtask => subtask.completed) && !plan.completed && (
-                              <div className="text-xs text-green-600 font-medium mt-2">
-                                ✨ 所有子任务完成，任务将自动标记为完成
+                              <div className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1">
+                                <span>✨</span>
+                                <span>所有子任务完成，任务将自动标记为完成</span>
                               </div>
                             )}
                             
                             {plan.completed && plan.subtasks.some(subtask => !subtask.completed) && (
-                              <div className="text-xs text-orange-600 font-medium mt-2">
-                                ⚠️ 有子任务未完成，任务将自动取消完成状态
+                              <div className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-1">
+                                <span>⚠️</span>
+                                <span>有子任务未完成，任务将自动取消完成状态</span>
                               </div>
                             )}
                           </div>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-1 ml-4">
-                        {!plan.completed && (
+                      {/* 右侧操作菜单 */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-green-600 hover:text-green-700"
-                            onClick={() => handleComplete(plan._id)}
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                           >
-                            <Check className="w-4 h-4" />
+                            <MoreVertical className="w-4 h-4" />
                           </Button>
-                        )}
-                        
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-blue-600 hover:text-blue-700"
-                          onClick={() => handleEdit(plan)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDelete(plan._id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(plan)}
+                            className="cursor-pointer"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            编辑
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(plan._id)}
+                            className="cursor-pointer text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            删除
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>

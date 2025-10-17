@@ -19,6 +19,11 @@ const PlanSchema: Schema = new Schema(
       type: String,
       required: true,
     },
+    quantity: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     completed: {
       type: Boolean,
       default: false,
@@ -35,6 +40,7 @@ const PlanSchema: Schema = new Schema(
       type: [
         {
           content: { type: String, required: true },
+          quantity: { type: Number, default: 0, min: 0 },
           completed: { type: Boolean, default: false },
         },
       ],
