@@ -300,33 +300,10 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                           )}
                         </div>
                         
-                        {/* 主计划数量控制 - 仅在没有子任务时显示 */}
-                        {!hasSubtasks(plan) && (
+                        {/* 显示主计划数量 - 仅在没有子任务时显示 */}
+                        {!hasSubtasks(plan) && (plan.quantity || 0) > 0 && (
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm text-gray-600">数量:</span>
-                            <div className="flex items-center gap-1 bg-gray-50 rounded-md px-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 p-0 hover:bg-gray-200"
-                                onClick={() => updatePlanQuantity(plan._id, -1)}
-                                disabled={plan.completed || (plan.quantity || 0) <= 0}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="min-w-[2.5rem] text-center text-sm font-medium px-2">
-                                {plan.quantity || 0}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 p-0 hover:bg-gray-200"
-                                onClick={() => updatePlanQuantity(plan._id, 1)}
-                                disabled={plan.completed}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            <span className="text-sm text-gray-600">数量: {plan.quantity}</span>
                           </div>
                         )}
                         
@@ -415,7 +392,7 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuContent align="end" className="w-36">
                           <DropdownMenuItem
                             onClick={() => handleEdit(plan)}
                             className="cursor-pointer"
@@ -423,6 +400,27 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                             <Edit className="w-4 h-4 mr-2" />
                             编辑
                           </DropdownMenuItem>
+                          {/* 主计划数量控制 - 仅在没有子任务时显示 */}
+                          {!hasSubtasks(plan) && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => updatePlanQuantity(plan._id, 1)}
+                                className="cursor-pointer"
+                                disabled={plan.completed}
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                数量 +1
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updatePlanQuantity(plan._id, -1)}
+                                className="cursor-pointer"
+                                disabled={plan.completed || (plan.quantity || 0) <= 0}
+                              >
+                                <Minus className="w-4 h-4 mr-2" />
+                                数量 -1
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           <DropdownMenuItem
                             onClick={() => handleDelete(plan._id)}
                             className="cursor-pointer text-red-600 focus:text-red-600"
