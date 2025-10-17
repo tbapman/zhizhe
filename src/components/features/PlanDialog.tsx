@@ -37,7 +37,9 @@ export default function PlanDialog({
   useEffect(() => {
     if (plan) {
       setContent(plan.content);
-      setSelectedGoal(plan.goalId || '');
+      // Handle goalId which can be string or object
+      const goalId = typeof plan.goalId === 'object' && plan.goalId ? plan.goalId._id : plan.goalId || '';
+      setSelectedGoal(goalId);
       setSelectedDate(new Date(plan.date).toISOString().split('T')[0]);
       setCompleted(plan.completed);
       setSubtasks(plan.subtasks || []);
