@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Edit, Trash2, Target, CheckSquare, Square, Plus, Minus, MoreVertical } from 'lucide-react';
 import { usePlanStore } from '@/lib/stores/planStore';
@@ -30,10 +30,19 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(false);
+  
+  // 防抖定时器
+  const updateTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
   useEffect(() => {
     fetchPlans(selectedDate);
     fetchGoals();
+    
+    // 清理函数：组件卸载时清除所有定时器
+    return () => {
+      Object.values(updateTimers.current).forEach(timer => clearTimeout(timer));
+      updateTimers.current = {};
+    };
   }, [fetchPlans, selectedDate]);
 
   const fetchGoals = async () => {
@@ -121,25 +130,74 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     await updatePlan(planId, updates);
   };
 
-  const updatePlanQuantity = async (planId: string, change: number) => {
+  const updatePlanQuantity = (planId: string, change: number) => {
     const plan = plans.find(p => p._id === planId);
     if (!plan) return;
 
     const newQuantity = Math.max(0, (plan.quantity || 0) + change);
-    await updatePlan(planId, { quantity: newQuantity });
+    
+    // 乐观更新：立即更新本地状态
+    usePlanStore.setState((state) => ({
+      plans: state.plans.map(p => 
+        p._id === planId ? { ...p, quantity: newQuantity } : p
+      )
+    }));
+    
+    // 清除之前的定时器
+    if (updateTimers.current[planId]) {
+      clearTimeout(updateTimers.current[planId]);
+    }
+    
+    // 防抖：500ms后才真正发送请求
+    updateTimers.current[planId] = setTimeout(() => {
+      updatePlan(planId, { quantity: newQuantity }).catch(() => {
+        // 如果失败，恢复原值
+        usePlanStore.setState((state) => ({
+          plans: state.plans.map(p => 
+            p._id === planId ? { ...p, quantity: plan.quantity } : p
+          )
+        }));
+      });
+      delete updateTimers.current[planId];
+    }, 500);
   };
 
-  const updateSubtaskQuantity = async (planId: string, subtaskIndex: number, change: number) => {
+  const updateSubtaskQuantity = (planId: string, subtaskIndex: number, change: number) => {
     const plan = plans.find(p => p._id === planId);
     if (!plan || !plan.subtasks) return;
 
+    const oldSubtasks = [...plan.subtasks];
     const updatedSubtasks = [...plan.subtasks];
     updatedSubtasks[subtaskIndex] = {
       ...updatedSubtasks[subtaskIndex],
       quantity: Math.max(0, (updatedSubtasks[subtaskIndex].quantity || 0) + change)
     };
 
-    await updatePlan(planId, { subtasks: updatedSubtasks });
+    // 乐观更新：立即更新本地状态
+    usePlanStore.setState((state) => ({
+      plans: state.plans.map(p => 
+        p._id === planId ? { ...p, subtasks: updatedSubtasks } : p
+      )
+    }));
+
+    // 清除之前的定时器
+    const timerKey = `${planId}-${subtaskIndex}`;
+    if (updateTimers.current[timerKey]) {
+      clearTimeout(updateTimers.current[timerKey]);
+    }
+
+    // 防抖：500ms后才真正发送请求
+    updateTimers.current[timerKey] = setTimeout(() => {
+      updatePlan(planId, { subtasks: updatedSubtasks }).catch(() => {
+        // 如果失败，恢复原值
+        usePlanStore.setState((state) => ({
+          plans: state.plans.map(p => 
+            p._id === planId ? { ...p, subtasks: oldSubtasks } : p
+          )
+        }));
+      });
+      delete updateTimers.current[timerKey];
+    }, 500);
   };
 
   const filteredPlans = selectedDate 
