@@ -7,9 +7,9 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/api/")) {
     // 跳过认证路由
     if (
-      request.nextUrl.pathname.startsWith("/api/auth/") ||
-      request.nextUrl.pathname === "/api/auth/login" ||
-      request.nextUrl.pathname === "/api/auth/register"
+      request.nextUrl.pathname.startsWith("/api/auth/login") ||
+      request.nextUrl.pathname.startsWith("/api/auth/register") ||
+      request.nextUrl.pathname.startsWith("/api/auth/me")
     ) {
       return NextResponse.next();
     }
@@ -17,6 +17,7 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get("auth-token")?.value;
 
     if (!token) {
+      console.log('Middleware API: No token found for:', request.nextUrl.pathname);
       return NextResponse.json(
         { success: false, message: "未提供认证令牌" },
         { status: 401 }
@@ -26,6 +27,7 @@ export async function middleware(request: NextRequest) {
     try {
       const payload = await verifyToken(token);
       if (!payload) {
+        console.log('Middleware API: Invalid token payload for:', request.nextUrl.pathname);
         return NextResponse.json(
           { success: false, message: "无效的认证令牌" },
           { status: 401 }
@@ -43,6 +45,7 @@ export async function middleware(request: NextRequest) {
         },
       });
     } catch (error) {
+      console.log('Middleware API: Token verification error:', error);
       return NextResponse.json(
         { success: false, message: "无效的认证令牌" },
         { status: 401 }
@@ -60,21 +63,22 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get("auth-token")?.value;
 
     if (!token) {
-      console.log('No token found for protected path:', request.nextUrl.pathname);
-      console.log('Available cookies:', request.cookies.getAll().map(cookie => cookie.name));
+      console.log('Middleware: No token found for protected path:', request.nextUrl.pathname);
+      console.log('Middleware: Available cookies:', request.cookies.getAll().map(cookie => `${cookie.name}=${cookie.value.substring(0, 10)}...`));
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
     try {
+      console.log('Middleware: Verifying token for path:', request.nextUrl.pathname);
       const payload = await verifyToken(token);
       if (!payload) {
-        console.log('Invalid token for protected path:', request.nextUrl.pathname);
+        console.log('Middleware: Invalid token payload for protected path:', request.nextUrl.pathname);
         return NextResponse.redirect(new URL("/login", request.url));
       }
-      console.log('Token valid for path:', request.nextUrl.pathname, 'userId:', payload.userId);
+      console.log('Middleware: Token valid for path:', request.nextUrl.pathname, 'userId:', payload.userId);
       return NextResponse.next();
     } catch (error) {
-      console.log('Token verification failed:', error);
+      console.log('Middleware: Token verification failed for path:', request.nextUrl.pathname, 'error:', error);
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }

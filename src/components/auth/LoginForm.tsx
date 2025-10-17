@@ -28,12 +28,14 @@ export default function LoginForm({ onSuccess, onSwitch }: LoginFormProps) {
     
     try {
       await login(email, password);
-      // 登录成功后直接重定向
+      // 登录成功后调用成功回调
+      console.log('Login form: login successful, calling onSuccess');
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
-      // 错误已经在store中处理
+      // 错误已经在store中处理，这里不需要额外处理
+      console.error('Login form: login failed', error);
     }
   };
 

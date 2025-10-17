@@ -44,13 +44,8 @@ export async function POST(request: NextRequest) {
       email: user.email,
     });
     
-    // 设置cookie
-    const cookie = setTokenCookie(token);
-    
-    // 确保cookie在localhost上也能正确设置
-    const cookieHeader = `${cookie.name}=${cookie.value}; HttpOnly; Path=/; Max-Age=${cookie.maxAge}; SameSite=Lax${cookie.secure ? '; Secure' : ''}`;
-    
-    return NextResponse.json({
+    // 创建响应
+    const response = NextResponse.json({
       success: true,
       message: '登录成功',
       data: {
@@ -64,11 +59,15 @@ export async function POST(request: NextRequest) {
         },
         token,
       }
-    }, {
-      headers: {
-        'Set-Cookie': cookieHeader,
-      },
     });
+
+    // 设置cookie - 确保在开发环境下也能正确工作
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieValue = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+    
+    response.headers.set('Set-Cookie', cookieValue);
+    
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({

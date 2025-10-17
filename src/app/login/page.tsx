@@ -21,12 +21,12 @@ export default function AuthPage() {
     }
   }, [checkAuth]);
 
-  const handleSuccess = () => {
-    // 延迟重定向，确保cookie设置完成
-    setTimeout(() => {
+  const handleSuccess = async () => {
+    // 延迟重定向，确保cookie设置完成并重新检查认证状态
+    setTimeout(async () => {
+      await checkAuth(); // 重新检查认证状态
       router.replace('/tree');
-      // router.replace('/plan');
-    }, 100);
+    }, 200);
   };
 
   return (

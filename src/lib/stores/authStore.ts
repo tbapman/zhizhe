@@ -42,9 +42,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       
       const data = await response.json();
-      set({ user: data.data.user, token: data.data.token, loading: false });
+      console.log('Login successful, setting user state:', data.data.user);
+      set({ user: data.data.user, token: data.data.token, loading: false, error: null });
     } catch (error) {
+      console.error('Login error:', error);
       set({ error: (error as Error).message, loading: false });
+      throw error; // 重新抛出错误，让调用方知道登录失败
     }
   },
   
@@ -83,23 +86,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   checkAuth: async () => {
     set({ loading: true });
     try {
+      console.log('AuthStore: Checking authentication...');
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
       });
       
+      console.log('AuthStore: checkAuth response status:', response.status);
+      
       if (response.status === 401) {
         // 401未授权，清除状态
+        console.log('AuthStore: 401 Unauthorized, clearing user state');
         set({ user: null, token: null, loading: false });
         return;
       }
       
       if (response.ok) {
         const data = await response.json();
+        console.log('AuthStore: checkAuth successful, user:', data.data.user);
         set({ user: data.data.user, loading: false });
       } else {
+        console.log('AuthStore: checkAuth failed with status:', response.status);
         set({ user: null, loading: false });
       }
     } catch (error) {
+      console.error('AuthStore: checkAuth error:', error);
       set({ user: null, loading: false });
     }
   },
