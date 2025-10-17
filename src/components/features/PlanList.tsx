@@ -25,7 +25,7 @@ interface Goal {
 }
 
 export default function PlanList({ selectedDate }: PlanListProps) {
-  const { plans, loading, fetchPlans, updatePlan, deletePlan, completePlan } = usePlanStore();
+  const { plans, loading, fetchPlans, updatePlan, updatePlanSilently, deletePlan, completePlan } = usePlanStore();
   const [editingPlan, setEditingPlan] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -134,7 +134,8 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     const plan = plans.find(p => p._id === planId);
     if (!plan) return;
 
-    const newQuantity = Math.max(0, (plan.quantity || 0) + change);
+    const originalQuantity = plan.quantity || 0;
+    const newQuantity = Math.max(0, originalQuantity + change);
     
     // 乐观更新：立即更新本地状态
     usePlanStore.setState((state) => ({
@@ -149,15 +150,20 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     }
     
     // 防抖：500ms后才真正发送请求
-    updateTimers.current[planId] = setTimeout(() => {
-      updatePlan(planId, { quantity: newQuantity }).catch(() => {
-        // 如果失败，恢复原值
+    updateTimers.current[planId] = setTimeout(async () => {
+      try {
+        await updatePlanSilently(planId, { quantity: newQuantity });
+      } catch (error) {
+        console.error('Failed to update plan quantity:', error);
+        // 如果失败，恢复原值并重新获取最新数据
         usePlanStore.setState((state) => ({
           plans: state.plans.map(p => 
-            p._id === planId ? { ...p, quantity: plan.quantity } : p
+            p._id === planId ? { ...p, quantity: originalQuantity } : p
           )
         }));
-      });
+        // 重新获取数据以确保数据一致性
+        fetchPlans(selectedDate);
+      }
       delete updateTimers.current[planId];
     }, 500);
   };
@@ -166,7 +172,7 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     const plan = plans.find(p => p._id === planId);
     if (!plan || !plan.subtasks) return;
 
-    const oldSubtasks = [...plan.subtasks];
+    const originalSubtasks = [...plan.subtasks];
     const updatedSubtasks = [...plan.subtasks];
     updatedSubtasks[subtaskIndex] = {
       ...updatedSubtasks[subtaskIndex],
@@ -187,15 +193,20 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     }
 
     // 防抖：500ms后才真正发送请求
-    updateTimers.current[timerKey] = setTimeout(() => {
-      updatePlan(planId, { subtasks: updatedSubtasks }).catch(() => {
-        // 如果失败，恢复原值
+    updateTimers.current[timerKey] = setTimeout(async () => {
+      try {
+        await updatePlanSilently(planId, { subtasks: updatedSubtasks });
+      } catch (error) {
+        console.error('Failed to update subtask quantity:', error);
+        // 如果失败，恢复原值并重新获取最新数据
         usePlanStore.setState((state) => ({
           plans: state.plans.map(p => 
-            p._id === planId ? { ...p, subtasks: oldSubtasks } : p
+            p._id === planId ? { ...p, subtasks: originalSubtasks } : p
           )
         }));
-      });
+        // 重新获取数据以确保数据一致性
+        fetchPlans(selectedDate);
+      }
       delete updateTimers.current[timerKey];
     }, 500);
   };

@@ -10,6 +10,7 @@ interface PlanStore {
   fetchPlans: (date?: string) => Promise<void>;
   addPlan: (plan: Omit<Plan, '_id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updatePlan: (id: string, updates: Partial<Plan>) => Promise<void>;
+  updatePlanSilently: (id: string, updates: Partial<Plan>) => Promise<void>;
   deletePlan: (id: string) => Promise<void>;
   completePlan: (id: string) => Promise<void>;
 }
@@ -92,6 +93,32 @@ export const usePlanStore = create<PlanStore>((set) => ({
       }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+    }
+  },
+  
+  updatePlanSilently: async (id, updates) => {
+    try {
+      const response = await fetch(`/api/plans/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update plan');
+      
+      const result = await response.json();
+      if (result.success) {
+        set((state) => ({
+          plans: state.plans.map((plan) =>
+            plan._id === id ? result.data : plan
+          ),
+        }));
+      } else {
+        throw new Error(result.message || 'Failed to update plan');
+      }
+    } catch (error) {
+      // 静默更新失败时抛出错误，让调用方处理
+      throw error;
     }
   },
   
