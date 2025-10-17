@@ -26,7 +26,6 @@ export default function PlanDialog({
   plan
 }: PlanDialogProps) {
   const [content, setContent] = useState('');
-  const [quantity, setQuantity] = useState(0);
   const [selectedGoal, setSelectedGoal] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [completed, setCompleted] = useState(false);
@@ -38,7 +37,6 @@ export default function PlanDialog({
   useEffect(() => {
     if (plan) {
       setContent(plan.content);
-      setQuantity(plan.quantity || 0);
       // Handle goalId which can be string or object
       const goalId = typeof plan.goalId === 'object' && plan.goalId ? plan.goalId._id : plan.goalId || '';
       setSelectedGoal(goalId);
@@ -76,7 +74,6 @@ export default function PlanDialog({
 
   const resetForm = () => {
     setContent('');
-    setQuantity(0);
     setSelectedGoal('');
     setSelectedDate(new Date().toISOString().split('T')[0]);
     setCompleted(false);
@@ -118,7 +115,6 @@ export default function PlanDialog({
     
     const planData = {
       content,
-      quantity,
       goalId: selectedGoal && selectedGoal !== "none" ? selectedGoal : undefined,
       date: new Date(selectedDate),
       completed,
@@ -170,18 +166,6 @@ export default function PlanDialog({
               placeholder="请输入计划内容..."
               required
               rows={3}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="quantity">数量/频次/组数</Label>
-            <Input
-              id="quantity"
-              type="number"
-              min="0"
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-              placeholder="0"
             />
           </div>
 

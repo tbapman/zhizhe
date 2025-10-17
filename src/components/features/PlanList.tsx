@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Edit, Trash2, Target, CheckSquare, Square, Plus, Minus, MoreVertical } from 'lucide-react';
+import { Check, X, Edit, Trash2, Target, CheckSquare, Square, Plus, Minus, MoreVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import { usePlanStore } from '@/lib/stores/planStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,7 +30,8 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(false);
-  
+  const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
+
   // 防抖定时器
   const updateTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
@@ -186,6 +187,24 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   // 检查计划是否有子任务
   const hasSubtasks = (plan: any) => plan.subtasks && plan.subtasks.length > 0;
 
+  // 切换子任务操作按钮的展开状态
+  const toggleSubtaskExpansion = (planId: string, subtaskIndex: number) => {
+    const key = `${planId}-${subtaskIndex}`;
+    const newExpanded = new Set(expandedSubtasks);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedSubtasks(newExpanded);
+  };
+
+  // 检查子任务操作按钮是否展开
+  const isSubtaskExpanded = (planId: string, subtaskIndex: number) => {
+    const key = `${planId}-${subtaskIndex}`;
+    return expandedSubtasks.has(key);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -287,35 +306,76 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                                   </span>
                                 </div>
                                 
-                                {/* 子任务数量控制 */}
-                                <div className="flex items-center gap-1 bg-gray-50 rounded px-0.5 shrink-0">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 hover:bg-gray-200"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateSubtaskQuantity(plan._id, subIndex, -1);
-                                    }}
-                                    disabled={subtask.completed || (subtask.quantity || 0) <= 0}
-                                  >
-                                    <Minus className="w-3 h-3" />
-                                  </Button>
-                                  <span className="min-w-[1.5rem] text-center text-xs font-medium">
-                                    {subtask.quantity || 0}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 hover:bg-gray-200"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateSubtaskQuantity(plan._id, subIndex, 1);
-                                    }}
-                                    disabled={subtask.completed}
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </Button>
+                                {/* 子任务数量控制 - 聚合/展开模式 */}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {isSubtaskExpanded(plan._id, subIndex) ? (
+                                    // 展开模式：显示完整的数量控制按钮
+                                    <motion.div
+                                      className="flex items-center gap-1 bg-gray-50 rounded px-0.5"
+                                      initial={{ opacity: 0, width: 0 }}
+                                      animate={{ opacity: 1, width: 'auto' }}
+                                      exit={{ opacity: 0, width: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 hover:bg-gray-200"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateSubtaskQuantity(plan._id, subIndex, -1);
+                                        }}
+                                        disabled={subtask.completed || (subtask.quantity || 0) <= 0}
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </Button>
+                                      <span className="min-w-[1.5rem] text-center text-xs font-medium">
+                                        {subtask.quantity || 0}
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 hover:bg-gray-200"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateSubtaskQuantity(plan._id, subIndex, 1);
+                                        }}
+                                        disabled={subtask.completed}
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 hover:bg-gray-200 ml-1"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleSubtaskExpansion(plan._id, subIndex);
+                                        }}
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </Button>
+                                    </motion.div>
+                                  ) : (
+                                    // 聚合模式：只显示数量指示器
+                                    <motion.button
+                                      className={`h-6 px-2 py-0 text-xs font-medium rounded flex items-center gap-1 transition-colors ${
+                                        (subtask.quantity || 0) > 0
+                                          ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                                          : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200'
+                                      }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleSubtaskExpansion(plan._id, subIndex);
+                                      }}
+                                      disabled={subtask.completed}
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                    >
+                                      <span>{subtask.quantity || 0}</span>
+                                      <ChevronRight className="w-3 h-3 opacity-60" />
+                                    </motion.button>
+                                  )}
                                 </div>
                               </div>
                             ))}
