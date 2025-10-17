@@ -130,44 +130,6 @@ export default function PlanList({ selectedDate }: PlanListProps) {
     await updatePlan(planId, updates);
   };
 
-  const updatePlanQuantity = (planId: string, change: number) => {
-    const plan = plans.find(p => p._id === planId);
-    if (!plan) return;
-
-    const originalQuantity = plan.quantity || 0;
-    const newQuantity = Math.max(0, originalQuantity + change);
-    
-    // 乐观更新：立即更新本地状态
-    usePlanStore.setState((state) => ({
-      plans: state.plans.map(p => 
-        p._id === planId ? { ...p, quantity: newQuantity } : p
-      )
-    }));
-    
-    // 清除之前的定时器
-    if (updateTimers.current[planId]) {
-      clearTimeout(updateTimers.current[planId]);
-    }
-    
-    // 防抖：500ms后才真正发送请求
-    updateTimers.current[planId] = setTimeout(async () => {
-      try {
-        await updatePlanSilently(planId, { quantity: newQuantity });
-      } catch (error) {
-        console.error('Failed to update plan quantity:', error);
-        // 如果失败，恢复原值并重新获取最新数据
-        usePlanStore.setState((state) => ({
-          plans: state.plans.map(p => 
-            p._id === planId ? { ...p, quantity: originalQuantity } : p
-          )
-        }));
-        // 重新获取数据以确保数据一致性
-        fetchPlans(selectedDate);
-      }
-      delete updateTimers.current[planId];
-    }, 500);
-  };
-
   const updateSubtaskQuantity = (planId: string, subtaskIndex: number, change: number) => {
     const plan = plans.find(p => p._id === planId);
     if (!plan || !plan.subtasks) return;
@@ -300,12 +262,6 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                           )}
                         </div>
                         
-                        {/* 显示主计划数量 - 仅在没有子任务时显示 */}
-                        {!hasSubtasks(plan) && (plan.quantity || 0) > 0 && (
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm text-gray-600">数量: {plan.quantity}</span>
-                          </div>
-                        )}
                         
                         {/* 子任务列表 */}
                         {hasSubtasks(plan) && (
@@ -400,27 +356,6 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                             <Edit className="w-4 h-4 mr-2" />
                             编辑
                           </DropdownMenuItem>
-                          {/* 主计划数量控制 - 仅在没有子任务时显示 */}
-                          {!hasSubtasks(plan) && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => updatePlanQuantity(plan._id, 1)}
-                                className="cursor-pointer"
-                                disabled={plan.completed}
-                              >
-                                <Plus className="w-4 h-4 mr-2" />
-                                数量 +1
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => updatePlanQuantity(plan._id, -1)}
-                                className="cursor-pointer"
-                                disabled={plan.completed || (plan.quantity || 0) <= 0}
-                              >
-                                <Minus className="w-4 h-4 mr-2" />
-                                数量 -1
-                              </DropdownMenuItem>
-                            </>
-                          )}
                           <DropdownMenuItem
                             onClick={() => handleDelete(plan._id)}
                             className="cursor-pointer text-red-600 focus:text-red-600"
