@@ -144,10 +144,10 @@ export default function PlanDialog({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white rounded-lg w-full max-w-md mx-auto"
+        className="bg-white rounded-lg w-full max-w-md mx-auto max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
           <h2 className="text-lg font-semibold">
             {plan ? '编辑计划' : '添加新计划'}
           </h2>
@@ -159,7 +159,8 @@ export default function PlanDialog({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-4 space-y-4 overflow-y-auto flex-1">
           <div>
             <Label htmlFor="content">计划内容</Label>
             <Textarea
@@ -297,8 +298,9 @@ export default function PlanDialog({
             />
             <Label htmlFor="completed">标记为已完成</Label>
           </div>
+          </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 p-4 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"
