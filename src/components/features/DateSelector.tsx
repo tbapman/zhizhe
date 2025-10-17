@@ -24,6 +24,14 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
     const lastDay = new Date(year, month + 1, 0);
     const days = [];
     
+    // 添加空白天数以对齐星期几
+    // getDay() 返回 0-6，0是星期天
+    const startDayOfWeek = firstDay.getDay();
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null); // 用 null 表示空白天
+    }
+    
+    // 添加当月的所有天数
     for (let day = 1; day <= lastDay.getDate(); day++) {
       days.push(new Date(year, month, day));
     }
@@ -87,19 +95,23 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
           </div>
         ))}
         
-        {days.map((date) => (
-          <button
-            key={date.toISOString()}
-            onClick={() => handleDateSelect(date)}
-            className={cn(
-              'text-center py-2 text-sm rounded-lg transition-colors',
-              isSelected(date) && 'bg-green-500 text-white',
-              isToday(date) && !isSelected(date) && 'bg-green-100 text-green-700',
-              !isSelected(date) && !isToday(date) && 'hover:bg-gray-100'
-            )}
-          >
-            {date.getDate()}
-          </button>
+        {days.map((date, index) => (
+          date ? (
+            <button
+              key={date.toISOString()}
+              onClick={() => handleDateSelect(date)}
+              className={cn(
+                'text-center py-2 text-sm rounded-lg transition-colors',
+                isSelected(date) && 'bg-green-500 text-white',
+                isToday(date) && !isSelected(date) && 'bg-green-100 text-green-700',
+                !isSelected(date) && !isToday(date) && 'hover:bg-gray-100'
+              )}
+            >
+              {date.getDate()}
+            </button>
+          ) : (
+            <div key={`empty-${index}`} className="text-center py-2 text-sm" />
+          )
         ))}
       </div>
     </div>
