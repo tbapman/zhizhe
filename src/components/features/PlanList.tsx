@@ -36,6 +36,7 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   const updateTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
   useEffect(() => {
+    console.log('selectedDate', selectedDate);
     fetchPlans(selectedDate);
     fetchGoals();
     
