@@ -71,12 +71,31 @@ export default function SwipeActions({
   };
 
   // 处理操作按钮点击
-  const handleActionClick = (action: SwipeAction) => {
+  const handleActionClick = async (action: SwipeAction) => {
     if (action.disabled) return; // 如果按钮被禁用，不执行任何操作
-    action.onClick();
-    // 点击后关闭滑动面板
-    setIsOpen(false);
-    x.set(0);
+    
+    try {
+      // 立即关闭滑动面板，提供更好的用户体验
+      setIsOpen(false);
+      
+      // 使用动画平滑关闭
+      x.set(0);
+      
+      // 稍微延迟执行操作，让关闭动画开始
+      setTimeout(async () => {
+        try {
+          await action.onClick();
+        } catch (error) {
+          console.error('Action execution failed:', error);
+        }
+      }, 50);
+      
+    } catch (error) {
+      console.error('Action click handler failed:', error);
+      // 确保面板关闭
+      setIsOpen(false);
+      x.set(0);
+    }
   };
 
   // 点击外部区域关闭
