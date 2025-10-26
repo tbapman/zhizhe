@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Edit, Trash2, Target, CheckSquare, Square, Plus, Minus, MoreVertical, ChevronRight, ChevronDown } from 'lucide-react';
+import { Check, X, Edit, Trash2, Target, Plus, Minus, MoreVertical, ChevronRight } from 'lucide-react';
 import { usePlanStore } from '@/lib/stores/planStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,20 +32,12 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(false);
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
-
-  // 防抖定时器
-  const updateTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const [openActionPanels, setOpenActionPanels] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     console.log('selectedDate', selectedDate);
     fetchPlans(selectedDate);
     fetchGoals();
-    
-    // 清理函数：组件卸载时清除所有定时器
-    return () => {
-      Object.values(updateTimers.current).forEach(timer => clearTimeout(timer));
-      updateTimers.current = {};
-    };
   }, [fetchPlans, selectedDate]);
 
   const fetchGoals = async () => {
@@ -104,86 +96,75 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   };
 
   const toggleSubtask = async (planId: string, subtaskIndex: number) => {
-    const plan = plans.find(p => p._id === planId);
-    if (!plan || !plan.subtasks) return;
+    try {
+      const plan = plans.find(p => p._id === planId);
+      if (!plan || !plan.subtasks) return;
 
-    const updatedSubtasks = [...plan.subtasks];
-    updatedSubtasks[subtaskIndex] = {
-      ...updatedSubtasks[subtaskIndex],
-      completed: !updatedSubtasks[subtaskIndex].completed
-    };
+      const updatedSubtasks = [...plan.subtasks];
+      updatedSubtasks[subtaskIndex] = {
+        ...updatedSubtasks[subtaskIndex],
+        completed: !updatedSubtasks[subtaskIndex].completed
+      };
 
-    // 检查是否所有子任务都已完成
-    const allSubtasksCompleted = updatedSubtasks.every(subtask => subtask.completed);
-    
-    const updates: any = { subtasks: updatedSubtasks };
-    
-    // 如果所有子任务都完成且当前任务未完成，则自动标记为完成
-    if (allSubtasksCompleted && !plan.completed) {
-      updates.completed = true;
-      updates.completedAt = new Date();
+      // 检查是否所有子任务都已完成
+      const allSubtasksCompleted = updatedSubtasks.every(subtask => subtask.completed);
+
+      const updates: any = { subtasks: updatedSubtasks };
+
+      // 如果所有子任务都完成且当前任务未完成，则自动标记为完成
+      if (allSubtasksCompleted && !plan.completed) {
+        updates.completed = true;
+        updates.completedAt = new Date();
+      }
+
+      // 如果有子任务未完成且当前任务已完成，则自动标记为未完成
+      if (!allSubtasksCompleted && plan.completed) {
+        updates.completed = false;
+        updates.completedAt = null;
+      }
+
+      await updatePlan(planId, updates);
+    } catch (error) {
+      console.error('Failed to toggle subtask:', error);
+      // 重新获取数据以确保数据一致性
+      fetchPlans(selectedDate);
     }
-    
-    // 如果有子任务未完成且当前任务已完成，则自动标记为未完成
-    if (!allSubtasksCompleted && plan.completed) {
-      updates.completed = false;
-      updates.completedAt = null;
-    }
-
-    await updatePlan(planId, updates);
   };
 
   const deleteSubtask = async (planId: string, subtaskIndex: number) => {
-    const plan = plans.find(p => p._id === planId);
-    if (!plan || !plan.subtasks) return;
+    try {
+      const plan = plans.find(p => p._id === planId);
+      if (!plan || !plan.subtasks) return;
 
-    if (confirm('确定要删除这个子任务吗？')) {
-      const updatedSubtasks = plan.subtasks.filter((_, index) => index !== subtaskIndex);
-      await updatePlan(planId, { subtasks: updatedSubtasks });
+      if (confirm('确定要删除这个子任务吗？')) {
+        const updatedSubtasks = plan.subtasks.filter((_, index) => index !== subtaskIndex);
+        await updatePlan(planId, { subtasks: updatedSubtasks });
+      }
+    } catch (error) {
+      console.error('Failed to delete subtask:', error);
+      // 重新获取数据以确保数据一致性
+      fetchPlans(selectedDate);
     }
   };
 
-  const updateSubtaskQuantity = (planId: string, subtaskIndex: number, change: number) => {
+  const updateSubtaskQuantity = async (planId: string, subtaskIndex: number, change: number) => {
     const plan = plans.find(p => p._id === planId);
     if (!plan || !plan.subtasks) return;
 
-    const originalSubtasks = [...plan.subtasks];
     const updatedSubtasks = [...plan.subtasks];
     updatedSubtasks[subtaskIndex] = {
       ...updatedSubtasks[subtaskIndex],
       quantity: Math.max(0, (updatedSubtasks[subtaskIndex].quantity || 0) + change)
     };
 
-    // 乐观更新：立即更新本地状态
-    usePlanStore.setState((state) => ({
-      plans: state.plans.map(p => 
-        p._id === planId ? { ...p, subtasks: updatedSubtasks } : p
-      )
-    }));
-
-    // 清除之前的定时器
-    const timerKey = `${planId}-${subtaskIndex}`;
-    if (updateTimers.current[timerKey]) {
-      clearTimeout(updateTimers.current[timerKey]);
+    // 直接调用接口更新，不再进行乐观更新
+    try {
+      await updatePlanSilently(planId, { subtasks: updatedSubtasks });
+    } catch (error) {
+      console.error('Failed to update subtask quantity:', error);
+      // 如果失败，重新获取数据以确保数据一致性
+      fetchPlans(selectedDate);
     }
-
-    // 防抖：500ms后才真正发送请求
-    updateTimers.current[timerKey] = setTimeout(async () => {
-      try {
-        await updatePlanSilently(planId, { subtasks: updatedSubtasks });
-      } catch (error) {
-        console.error('Failed to update subtask quantity:', error);
-        // 如果失败，恢复原值并重新获取最新数据
-        usePlanStore.setState((state) => ({
-          plans: state.plans.map(p => 
-            p._id === planId ? { ...p, subtasks: originalSubtasks } : p
-          )
-        }));
-        // 重新获取数据以确保数据一致性
-        fetchPlans(selectedDate);
-      }
-      delete updateTimers.current[timerKey];
-    }, 500);
   };
 
   const filteredPlans = selectedDate 
@@ -199,7 +180,26 @@ export default function PlanList({ selectedDate }: PlanListProps) {
   // 检查计划是否有子任务
   const hasSubtasks = (plan: any) => plan.subtasks && plan.subtasks.length > 0;
 
-  // 移除子任务展开逻辑，现在只在滑动时显示数量控制按钮
+  // 处理操作面板的切换
+  const toggleActionPanel = (planId: string, subtaskIndex: number) => {
+    const panelId = `${planId}-${subtaskIndex}`;
+    const newOpenPanels = new Set(openActionPanels);
+    
+    if (newOpenPanels.has(panelId)) {
+      newOpenPanels.delete(panelId);
+    } else {
+      // 关闭其他面板，只保留当前面板
+      newOpenPanels.clear();
+      newOpenPanels.add(panelId);
+    }
+    
+    setOpenActionPanels(newOpenPanels);
+  };
+
+  // 关闭所有操作面板
+  const closeAllActionPanels = () => {
+    setOpenActionPanels(new Set());
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-6 py-4 sm:py-6">
@@ -279,7 +279,7 @@ export default function PlanList({ selectedDate }: PlanListProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-6">
           <AnimatePresence>
             {filteredPlans.map((plan) => (
               <motion.div
@@ -289,16 +289,7 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card className={`${plan.completed ? 'bg-green-50 border-green-200' : ''} transition-all duration-200 hover:shadow-sm sm:hover:shadow-md relative overflow-hidden`}>
-                  {/* 滑动操作可用时的视觉指示 */}
-                  {hasSubtasks(plan) && (
-                    <motion.div
-                      className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-500 opacity-0"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: hasSubtasks(plan) ? 0.3 : 0 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
+                <Card className={`${plan.completed ? 'bg-green-50 border-green-200' : ''} transition-all duration-200 hover:shadow-sm sm:hover:shadow-md relative overflow-visible`}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {/* 左侧完成状态按钮 - 优化为圆形勾选 */}
@@ -365,35 +356,41 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                           
                           {/* 子任务列表 - 优化布局和交互 */}
                           {hasSubtasks(plan) && (
-                            <div className="mt-4 space-y-2">
-                              {/* 滑动提示 - 只在有子任务时显示 */}
-                              <motion.div
-                                className="flex items-center gap-2 text-xs text-gray-500 mb-3 px-1"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.5 }}
-                              >
-                                <ChevronRight className="w-3 h-3" />
-                                <span>左右滑动调整数量或标记完成</span>
-                              </motion.div>
-                              {plan.subtasks.map((subtask, subIndex) => (
+                            <div className="mt-4 space-y-2 overflow-visible">
+                              {plan.subtasks.map((subtask, subIndex) => {
+                                const panelId = `${plan._id}-${subIndex}`;
+                                const isActionPanelOpen = openActionPanels.has(panelId);
+                                
+                                return (
                                 <SwipeActions
                                   key={subIndex}
+                                  isOpen={isActionPanelOpen}
+                                  onToggle={(isOpen) => {
+                                    if (isOpen) {
+                                      toggleActionPanel(plan._id, subIndex);
+                                    } else {
+                                      closeAllActionPanels();
+                                    }
+                                  }}
                                   actions={[
                                     {
                                       id: 'toggle',
                                       label: subtask.completed ? '取消' : '完成',
                                       icon: subtask.completed ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />,
                                       color: subtask.completed ? 'gray' : 'green',
-                                      onClick: () => toggleSubtask(plan._id, subIndex)
+                                      onClick: async () => {
+                                        closeAllActionPanels();
+                                        await toggleSubtask(plan._id, subIndex);
+                                      }
                                     },
                                     {
                                       id: 'minus',
                                       label: '减少',
                                       icon: <Minus className="w-4 h-4" />,
                                       color: 'blue',
-                                      onClick: () => {
-                                        updateSubtaskQuantity(plan._id, subIndex, -1);
+                                      onClick: async () => {
+                                        closeAllActionPanels();
+                                        await updateSubtaskQuantity(plan._id, subIndex, -1);
                                       },
                                       disabled: subtask.completed || (subtask.quantity || 0) <= 0
                                     },
@@ -402,8 +399,9 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                                       label: '增加',
                                       icon: <Plus className="w-4 h-4" />,
                                       color: 'blue',
-                                      onClick: () => {
-                                        updateSubtaskQuantity(plan._id, subIndex, 1);
+                                      onClick: async () => {
+                                        closeAllActionPanels();
+                                        await updateSubtaskQuantity(plan._id, subIndex, 1);
                                       },
                                       disabled: subtask.completed
                                     },
@@ -412,68 +410,72 @@ export default function PlanList({ selectedDate }: PlanListProps) {
                                       label: '删除',
                                       icon: <Trash2 className="w-4 h-4" />,
                                       color: 'red',
-                                      onClick: () => deleteSubtask(plan._id, subIndex)
+                                      onClick: async () => {
+                                        closeAllActionPanels();
+                                        await deleteSubtask(plan._id, subIndex);
+                                      }
                                     }
                                   ]}
                                   disabled={loading || subtask.completed}
-                                  threshold={60}
                                 >
-                                  <div
-                                    className={`flex items-center gap-3 text-sm p-3 sm:p-4 rounded-lg transition-all duration-200 ${
-                                      subtask.completed
-                                        ? 'bg-green-50 border border-green-200'
-                                        : 'bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200'
-                                    }`}
-                                  >
-                                    {/* 左侧勾选区域 */}
                                     <div
-                                      className="flex-shrink-0 cursor-pointer"
-                                      onClick={() => toggleSubtask(plan._id, subIndex)}
+                                      className={`flex items-center gap-3 text-sm p-3 sm:p-4 rounded-lg transition-all duration-200 ${
+                                        subtask.completed
+                                          ? 'bg-green-50 border border-green-200'
+                                          : 'bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200'
+                                      }`}
                                     >
-                                      {subtask.completed ? (
-                                        <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center">
-                                          <Check className="w-3 h-3 text-white" />
-                                        </div>
-                                      ) : (
-                                        <div className="w-5 h-5 rounded border-2 border-gray-300 hover:border-green-500 transition-colors" />
-                                      )}
-                                    </div>
-
-                                    {/* 中间内容区 */}
-                                    <div className="flex-1 min-w-0">
-                                      <span className={`block ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700'} font-medium`}>
-                                        {subtask.content}
-                                      </span>
-                                    </div>
-
-                                    {/* 右侧数量指示器 - 优化视觉设计 */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <motion.div
-                                        className={`h-8 px-3 py-0 text-sm font-bold rounded-full flex items-center gap-1 transition-all duration-200 shadow-sm ${
-                                          (subtask.quantity || 0) > 0
-                                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-2 border-blue-200 shadow-blue-100'
-                                            : 'bg-white text-gray-400 border-2 border-gray-200'
-                                        } ${subtask.completed ? 'opacity-40' : ''}`}
-                                        whileHover={subtask.completed ? {} : { scale: 1.05 }}
-                                        whileTap={subtask.completed ? {} : { scale: 0.95 }}
+                                      {/* 左侧勾选区域 */}
+                                      <div
+                                        className="flex-shrink-0 cursor-pointer"
+                                        onClick={() => toggleSubtask(plan._id, subIndex)}
                                       >
-                                        <span className="min-w-[1.2rem] text-center">{subtask.quantity || 0}</span>
-                                        {(subtask.quantity || 0) > 0 && (
-                                          <div className="w-1 h-1 bg-white bg-opacity-60 rounded-full"></div>
+                                        {subtask.completed ? (
+                                          <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center">
+                                            <Check className="w-3 h-3 text-white" />
+                                          </div>
+                                        ) : (
+                                          <div className="w-5 h-5 rounded border-2 border-gray-300 hover:border-green-500 transition-colors" />
                                         )}
-                                      </motion.div>
-                                      <motion.div
-                                        className="text-gray-400 text-xs ml-1"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.2 }}
-                                      >
-                                        <ChevronRight className="w-3 h-3" />
-                                      </motion.div>
+                                      </div>
+
+                                      {/* 中间内容区 */}
+                                      <div className="flex-1 min-w-0">
+                                        <span className={`block ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700'} font-medium`}>
+                                          {subtask.content}
+                                        </span>
+                                      </div>
+
+                                      {/* 右侧数量指示器 - 可点击触发操作面板 */}
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <motion.button
+                                          className={`h-8 px-3 py-0 text-sm font-bold rounded-full flex items-center gap-1 transition-all duration-200 shadow-sm cursor-pointer ${
+                                            (subtask.quantity || 0) > 0
+                                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-2 border-blue-200 shadow-blue-100'
+                                              : 'bg-white text-gray-400 border-2 border-gray-200'
+                                          } ${subtask.completed ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-md'} ${
+                                            isActionPanelOpen ? 'ring-2 ring-blue-300 ring-opacity-50' : ''
+                                          }`}
+                                          whileHover={subtask.completed ? {} : { scale: 1.05 }}
+                                          whileTap={subtask.completed ? {} : { scale: 0.95 }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!subtask.completed) {
+                                              toggleActionPanel(plan._id, subIndex);
+                                            }
+                                          }}
+                                          disabled={subtask.completed}
+                                        >
+                                          <span className="min-w-[1.2rem] text-center">{subtask.quantity || 0}</span>
+                                          {(subtask.quantity || 0) > 0 && (
+                                            <div className="w-1 h-1 bg-white bg-opacity-60 rounded-full"></div>
+                                          )}
+                                        </motion.button>
+                                      </div>
                                     </div>
-                                  </div>
-                                </SwipeActions>
-                              ))}
+                                  </SwipeActions>
+                                );
+                              })}
 
                               {/* 状态提示 - 优化视觉设计 */}
                               {plan.subtasks.every(subtask => subtask.completed) && !plan.completed && (
