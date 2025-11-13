@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongoose';
 import User from '@/models/User';
-import { generateToken, setTokenCookie } from '@/lib/auth/jwt';
+import { generateToken } from '@/lib/auth/jwt';
 
 export async function POST(request: NextRequest) {
   try {
