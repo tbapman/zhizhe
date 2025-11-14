@@ -12,10 +12,8 @@ DOMAIN="zhizhe.pulchic.com"
 PORT=3000
 
 SSL_DIR="$APP_DIR/ssl"
-WEBROOT="/var/www/acme-challenge"
 
 NGINX_CONF="/etc/nginx/conf.d/${APP_NAME}.conf"
-NGINX_ACME_CONF="/etc/nginx/conf.d/${APP_NAME}_acme.conf"
 
 log() { echo -e "\033[1;32m[INFO]\033[0m $1"; }
 warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
@@ -28,24 +26,20 @@ err() { echo -e "\033[1;31m[ERROR]\033[0m $1" && exit 1; }
 prepare_env() {
   log "加载 Node 环境..."
 
-  # 加载 NVM
   export NVM_DIR="$HOME/.nvm"
   [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-  # Node 版本
   if [ -f "$APP_DIR/.nvmrc" ]; then
     nvm use || nvm install
   else
     nvm use --lts || nvm install --lts
   fi
 
-  # PNPM
   if ! command -v pnpm &>/dev/null; then
     log "安装 pnpm..."
     npm install -g pnpm
   fi
 
-  # PM2
   if ! command -v pm2 &>/dev/null; then
     log "安装 PM2..."
     npm install -g pm2
@@ -57,8 +51,6 @@ prepare_env() {
 # 拉取 / 更新代码
 # ============================
 update_code() {
-  local commit_hash="$1"
-
   if [ -d "$APP_DIR" ]; then
     cd "$APP_DIR"
     log "更新代码..."
@@ -69,43 +61,31 @@ update_code() {
     git clone "$REPO" "$APP_DIR"
     cd "$APP_DIR"
   fi
-
-  if [ -n "$commit_hash" ]; then
-    git checkout "$commit_hash" || err "无法切换到 commit $commit_hash"
-  fi
 }
 
 
 # ============================
-# 申请 / 安装 SSL 证书
+# 申请 / 安装 SSL 证书（DNS 验证）
 # ============================
 setup_ssl() {
-  log "准备 ACME 挑战目录..."
-  sudo mkdir -p "$WEBROOT"
-  sudo chown -R $USER:$USER "$WEBROOT"
+  log "使用阿里云 DNS 验证申请 SSL 证书..."
 
   mkdir -p "$SSL_DIR"
 
-  # 切回 Let's Encrypt
-  log "设置默认 CA 为 Let's Encrypt..."
   acme.sh --set-default-ca --server letsencrypt
 
-  log "创建临时 Nginx 配置用于 ACME 验证..."
-  sudo tee "$NGINX_ACME_CONF" >/dev/null <<EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
+  if [ -z "$Ali_Key" ] || [ -z "$Ali_Secret" ]; then
+    err "Ali_Key / Ali_Secret 环境变量未设置"
+  fi
 
-    location /.well-known/acme-challenge/ {
-        root $WEBROOT;
-    }
-}
-EOF
+  export Ali_Key
+  export Ali_Secret
 
-  sudo nginx -t && sudo systemctl reload nginx
-
-  log "申请 SSL 证书（Let's Encrypt）..."
-  acme.sh --issue -d "$DOMAIN" -w "$WEBROOT" --force
+  log "申请 SSL 证书（dns_ali）..."
+  acme.sh --issue \
+    --dns dns_ali \
+    -d "$DOMAIN" \
+    --force
 
   log "安装证书到 $SSL_DIR ..."
   acme.sh --install-cert -d "$DOMAIN" \
@@ -118,7 +98,7 @@ EOF
 
 
 # ============================
-# 构建 Next.js & PM2 启动
+# 构建 Next.js & PM2
 # ============================
 build_and_start() {
   cd "$APP_DIR"
@@ -143,10 +123,10 @@ build_and_start() {
 
 
 # ============================
-# 配置 Nginx
+# 配置 Nginx（最终正式配置）
 # ============================
 setup_nginx() {
-  log "生成正式的 Nginx 配置..."
+  log "生成 Nginx 配置..."
 
   sudo tee "$NGINX_CONF" >/dev/null <<EOF
 server {
@@ -166,20 +146,15 @@ server {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
     }
 
     location /health {
         return 200 "healthy\n";
-        add_header Content-Type text/plain;
     }
 }
 EOF
-
-  # 删除临时 ACME 配置
-  sudo rm -f "$NGINX_ACME_CONF"
 
   sudo nginx -t && sudo systemctl reload nginx
   log "Nginx 配置完成。"
@@ -190,14 +165,9 @@ EOF
 # 主流程
 # ============================
 main() {
-  local commit=""
-  if [ "$1" = "--commit" ]; then
-    commit="$2"
-  fi
-
   log "🚀 开始部署 zhizhe 应用..."
 
-  update_code "$commit"
+  update_code
   prepare_env
   setup_ssl
   setup_nginx
