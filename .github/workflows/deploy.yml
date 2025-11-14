@@ -23,12 +23,28 @@ jobs:
 
       - name: Run deploy script on PROD server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} <<EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} << 'EOF'
             set -e
+
+            echo "[INFO] Running deployment on PROD server"
+
+            # ====== 环境变量 ======
             export MONGODB_URI="${{ secrets.MONGODB_URI }}"
             export NODE_ENV="production"
+
+            # ====== 确保 acme.sh 已安装 ======
+            if ! command -v acme.sh &>/dev/null; then
+              echo "[INFO] Installing acme.sh..."
+              curl https://get.acme.sh | sh
+            fi
+
+            # 加载 acme.sh 到 PATH
+            export PATH="$HOME/.acme.sh:$PATH"
+
+            # ====== 执行部署脚本 ======
             bash /home/codespace/zhizhe/deploy-prod.sh
           EOF
+
 
   deploy-dev:
     if: github.ref == 'refs/heads/dev'
@@ -46,9 +62,19 @@ jobs:
 
       - name: Run deploy script on DEV server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} <<EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} << 'EOF'
             set -e
+
+            echo "[INFO] Running deployment on DEV server"
+
+            # ====== 环境变量 ======
             export MONGODB_URI="${{ secrets.MONGODB_URI }}"
             export NODE_ENV="development"
+
+            # DEV 环境一般 **不需要 SSL**，所以不安装 acme.sh
+            # 如果需要可以启用如下两行
+            # curl https://get.acme.sh | sh
+            # export PATH="$HOME/.acme.sh:$PATH"
+
             bash /home/deploy/codespace/vcc-frontend/deploy-dev.sh
           EOF
