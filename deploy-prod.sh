@@ -86,6 +86,10 @@ setup_ssl() {
 
   mkdir -p "$SSL_DIR"
 
+  # 切回 Let's Encrypt
+  log "设置默认 CA 为 Let's Encrypt..."
+  acme.sh --set-default-ca --server letsencrypt
+
   log "创建临时 Nginx 配置用于 ACME 验证..."
   sudo tee "$NGINX_ACME_CONF" >/dev/null <<EOF
 server {
@@ -100,7 +104,7 @@ EOF
 
   sudo nginx -t && sudo systemctl reload nginx
 
-  log "尝试申请 SSL 证书..."
+  log "申请 SSL 证书（Let's Encrypt）..."
   acme.sh --issue -d "$DOMAIN" -w "$WEBROOT" --force
 
   log "安装证书到 $SSL_DIR ..."
