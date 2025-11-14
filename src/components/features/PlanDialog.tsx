@@ -88,6 +88,13 @@ export default function PlanDialog({
     }
   };
 
+  const handleSubtaskInputBlur = () => {
+    // 当输入框失去焦点时自动添加子任务
+    if (newSubtaskContent.trim()) {
+      handleAddSubtask();
+    }
+  };
+
   const handleToggleSubtask = (index: number) => {
     const updatedSubtasks = [...subtasks];
     updatedSubtasks[index].completed = !updatedSubtasks[index].completed;
@@ -253,13 +260,14 @@ export default function PlanDialog({
                 <Input
                   value={newSubtaskContent}
                   onChange={(e) => setNewSubtaskContent(e.target.value)}
-                  onKeyPress={(e) => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       handleAddSubtask();
                     }
                   }}
-                  placeholder="添加子任务..."
+                  onBlur={handleSubtaskInputBlur}
+                  placeholder="添加子任务... (按回车或点击外部自动添加)"
                   className="flex-1 text-sm"
                 />
                 <Button
@@ -267,6 +275,10 @@ export default function PlanDialog({
                   size="sm"
                   onClick={handleAddSubtask}
                   disabled={!newSubtaskContent.trim()}
+                  className={cn(
+                    "transition-opacity duration-200",
+                    newSubtaskContent.trim() ? "opacity-100" : "opacity-50"
+                  )}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
