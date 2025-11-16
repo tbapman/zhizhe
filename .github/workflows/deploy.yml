@@ -23,32 +23,12 @@ jobs:
 
       - name: Run deploy script on PROD server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_PROD }}@${{ secrets.SSH_HOST_PROD }} <<EOF
             set -e
-
-            echo "[INFO] Running deployment on PROD server"
-
             export MONGODB_URI="${{ secrets.MONGODB_URI }}"
             export NODE_ENV="production"
-
-            # acme.sh 国内 Gitee 镜像（首次需安装）
-            if ! command -v acme.sh &>/dev/null; then
-              echo "[INFO] Installing acme.sh from Gitee..."
-              curl -L https://gitee.com/neilpang/acme.sh/raw/master/acme.sh -o ~/acme.sh
-              chmod +x ~/acme.sh
-              ~/acme.sh --install --home ~/.acme.sh
-            fi
-
-            export PATH="$HOME/.acme.sh:$PATH"
-            echo "[INFO] acme.sh version: $(acme.sh --version)"
-
-            # 注入阿里云 DNS Key
-            export Ali_Key="${{ secrets.ALI_KEY }}"
-            export Ali_Secret="${{ secrets.ALI_SECRET }}"
-
             bash /home/codespace/zhizhe/deploy-prod.sh
           EOF
-
 
   deploy-dev:
     if: github.ref == 'refs/heads/dev'
@@ -66,12 +46,9 @@ jobs:
 
       - name: Run deploy script on DEV server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_DEV }}@${{ secrets.SSH_HOST_DEV }} <<EOF
             set -e
-            echo "[INFO] Deploying DEV..."
-
             export MONGODB_URI="${{ secrets.MONGODB_URI }}"
             export NODE_ENV="development"
-
             bash /home/deploy/codespace/vcc-frontend/deploy-dev.sh
           EOF
